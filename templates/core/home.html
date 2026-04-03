@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}NbS ReAdapt Repository{% endblock %}
+
+{% block body %}
+<main class="app-shell">
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">ESPON ReAdapt</p>
+      <h1>NbS Knowledge Repository</h1>
+      <p class="lede">
+        Search, map, and analyze the curated evidence base for nature-based solutions in climate adaptation.
+      </p>
+    </div>
+    <div class="topbar-stats">
+      <div class="stat-card">
+        <strong>{{ total_records }}</strong>
+        <span>records</span>
+      </div>
+      <div class="stat-card">
+        <strong>{{ dataset_counts.papers|default:0 }}</strong>
+        <span>papers</span>
+      </div>
+      <div class="stat-card">
+        <strong>{{ dataset_counts.policies|default:0 }}</strong>
+        <span>policies</span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabbar">
+    <button class="tablink active" data-tab="search">Search & Browse</button>
+    <button class="tablink" data-tab="map">Map</button>
+    <button class="tablink" data-tab="analytics">Analytics</button>
+  </nav>
+
+  <section class="tabpanel active" data-panel="search">
+    <div class="workspace">
+      <aside class="filters-panel">
+        <div class="panel-head">
+          <h2>Filters</h2>
+          <button id="reset-filters" class="ghost-btn" type="button">Reset</button>
+        </div>
+
+        <label class="field">
+          <span>Search</span>
+          <input id="search-input" type="search" placeholder="Flooding, green roofs, Croatia, wetland restoration">
+        </label>
+
+        <label class="field">
+          <span>Source Type</span>
+          <select id="filter-source-dataset" multiple size="4"></select>
+        </label>
+
+        <label class="field">
+          <span>Country</span>
+          <select id="filter-country" multiple size="6"></select>
+        </label>
+
+        <label class="field">
+          <span>Geography Type</span>
+          <select id="filter-geography-type" multiple size="6"></select>
+        </label>
+
+        <label class="field">
+          <span>Hazard</span>
+          <select id="filter-hazard" multiple size="6"></select>
+        </label>
+
+        <label class="field">
+          <span>NbS Type</span>
+          <select id="filter-nbs-type" multiple size="6"></select>
+        </label>
+
+        <label class="field">
+          <span>Implementation Stage</span>
+          <select id="filter-implementation-stage" multiple size="5"></select>
+        </label>
+
+        <label class="field">
+          <span>Policy Level</span>
+          <select id="filter-policy-level" multiple size="5"></select>
+        </label>
+
+        <div class="year-grid">
+          <label class="field">
+            <span>Year From</span>
+            <input id="filter-year-gte" type="number" min="1900" max="2100">
+          </label>
+          <label class="field">
+            <span>Year To</span>
+            <input id="filter-year-lte" type="number" min="1900" max="2100">
+          </label>
+        </div>
+      </aside>
+
+      <section class="results-panel">
+        <div class="panel-head">
+          <div>
+            <h2>Results</h2>
+            <p id="results-meta" class="subtle">Loading repository records…</p>
+          </div>
+          <div class="head-actions">
+            <button id="run-search" class="primary-btn" type="button">Search</button>
+          </div>
+        </div>
+        <div id="active-filters" class="active-filters"></div>
+        <div id="results-list" class="results-list"></div>
+      </section>
+    </div>
+  </section>
+
+  <section class="tabpanel" data-panel="map">
+    <div class="panel-surface">
+      <div class="panel-head">
+        <div>
+          <h2>Evidence Map</h2>
+          <p class="subtle">Mapped results from the current search and filters.</p>
+        </div>
+      </div>
+      <div class="map-layout">
+        <div id="map-canvas"></div>
+        <div class="map-sidebar">
+          <div class="mini-card">
+            <h3>Mapped Records</h3>
+            <p id="map-meta" class="subtle">No map data loaded yet.</p>
+            <div id="map-list" class="stack-list compact-list"></div>
+          </div>
+          <div class="mini-card">
+            <h3>How It Works</h3>
+            <p class="subtle">
+              The map uses the same backend search and filter state as the search tab and only plots records with usable coordinates.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="tabpanel" data-panel="analytics">
+    <div class="panel-surface">
+      <div class="panel-head">
+        <div>
+          <h2>Repository Analytics</h2>
+          <p class="subtle">Compact evidence signals from the normalized repository data.</p>
+        </div>
+      </div>
+
+      <div class="analytics-grid">
+        <article class="mini-card">
+          <h3>By Dataset</h3>
+          <div id="analytics-datasets" class="stack-list"></div>
+        </article>
+        <article class="mini-card">
+          <h3>Implementation Stage</h3>
+          <div id="analytics-implementation" class="stack-list"></div>
+        </article>
+        <article class="mini-card analytics-wide">
+          <h3>Records by Year</h3>
+          <div id="analytics-years" class="year-bars"></div>
+        </article>
+        <article class="mini-card">
+          <h3>Top Hazards</h3>
+          <div id="analytics-hazards" class="stack-list"></div>
+        </article>
+        <article class="mini-card">
+          <h3>Top NbS Types</h3>
+          <div id="analytics-nbs" class="stack-list"></div>
+        </article>
+      </div>
+    </div>
+  </section>
+</main>
+
+<aside id="shortlist-drawer" class="shortlist-drawer">
+  <div class="shortlist-head">
+    <div>
+      <p class="eyebrow">Working Set</p>
+      <h2>Shortlist</h2>
+    </div>
+    <button id="clear-shortlist" class="ghost-btn" type="button">Clear</button>
+  </div>
+  <p id="shortlist-meta" class="subtle">No records shortlisted yet.</p>
+  <div id="shortlist-items" class="shortlist-items"></div>
+</aside>
+
+<div id="record-modal" class="record-modal">
+  <div class="record-dialog">
+    <div class="panel-head">
+      <div>
+        <p id="modal-type" class="eyebrow">Record</p>
+        <h2 id="modal-title">Record detail</h2>
+      </div>
+      <button id="close-modal" class="ghost-btn" type="button">Close</button>
+    </div>
+    <div id="modal-meta" class="result-meta"></div>
+    <div id="modal-summary" class="detail-summary"></div>
+    <div id="modal-sections" class="detail-grid"></div>
+  </div>
+</div>
+
+<script>
+  window.NBS_APP_BOOT = {
+    totalRecords: {{ total_records|default:0 }},
+    datasets: {
+      papers: {{ dataset_counts.papers|default:0 }},
+      networkProjects: {{ dataset_counts.network_projects|default:0 }},
+      euProjects: {{ dataset_counts.eu_projects|default:0 }},
+      policies: {{ dataset_counts.policies|default:0 }}
+    }
+  };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="/static/js/app.js"></script>
+{% endblock %}

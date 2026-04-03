@@ -1,0 +1,8 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+  <li>
+    <a href="{% url 'admin:repository_importbatch_import_sources' %}">Import Sources</a>
+  </li>
+  {{ block.super }}
+{% endblock %}

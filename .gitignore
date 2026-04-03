@@ -1,0 +1,73 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.python-version
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.hypothesis/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Django / FastAPI app artifacts
+staticfiles/
+media/
+logs/
+tmp/
+*.log
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Jupyter / notebooks
+.ipynb_checkpoints/
+
+# Database / search local volumes
+mysql_data/
+postgres_data/
+opensearch_data/
+redis_data/
+
+# Docker
+docker-data/
+
+# Node / frontend tooling
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+.next/
+coverage/
+
+# Project-generated exports and transformed data
+data/processed/
+data/exports/
+reports/
+
+# Keep initial source inputs versioned unless you later choose otherwise
+!initial_input/

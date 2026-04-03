@@ -1,0 +1,92 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<div id="content-main">
+  <h1>Import Repository Sources</h1>
+  <p>Use this page to import registered Excel sources into PostgreSQL. PostgreSQL remains the source of truth; OpenSearch indexing stays a separate step.</p>
+
+  <div class="module">
+    <h2>Registered Sources</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Dataset</th>
+          <th>Filename</th>
+          <th>Sheet</th>
+          <th>Normalizer</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for spec in registered_sources %}
+        <tr>
+          <td>{{ spec.dataset }}</td>
+          <td>{{ spec.filename }}</td>
+          <td>{{ spec.sheet_name }}</td>
+          <td>{{ spec.normalizer_key }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" class="module">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <fieldset class="module aligned">
+      {% for field in form %}
+      <div class="form-row">
+        <div>
+          {{ field.errors }}
+          {{ field.label_tag }}
+          {{ field }}
+          {% if field.help_text %}
+          <p class="help">{{ field.help_text }}</p>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </fieldset>
+    <div class="submit-row">
+      <button type="submit" name="action" value="validate">Validate Sources</button>
+      <button type="submit" name="action" value="import" class="default">Run Import</button>
+      <a href="{% url 'admin:repository_importbatch_changelist' %}" class="button cancel-link">Back to Import Batches</a>
+    </div>
+  </form>
+
+  {% if validation_results %}
+  <div class="module">
+    <h2>Validation Report</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Dataset</th>
+          <th>Filename</th>
+          <th>Rows</th>
+          <th>Columns</th>
+          <th>Duplicate IDs</th>
+          <th>Messages</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for result in validation_results %}
+        <tr>
+          <td>{{ result.status|upper }}</td>
+          <td>{{ result.dataset }}</td>
+          <td>{{ result.filename }}</td>
+          <td>{{ result.row_count }}</td>
+          <td>{{ result.column_count }}</td>
+          <td>{{ result.duplicate_source_ids }}</td>
+          <td>
+            {% for message in result.messages %}
+            <div>{{ message }}</div>
+            {% endfor %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
