@@ -35,6 +35,7 @@ Reference-only prototype files:
 
 - `index.html`
 - `index_ai.html`
+- `repository_v2_34_.html`
 
 These HTML files are treated as functional and design references, not as production architecture.
 
@@ -182,16 +183,18 @@ This keeps PostgreSQL taxonomies and OpenSearch facets usable.
 
 ## Frontend structure
 
-Main UI entrypoint:
+Current route split:
+
+- `/`: serves the reference-style `repository_v2_34_.html` experience
+- `/live/`: serves the Django template-driven UI
+
+Main Django-backed frontend assets:
 
 - [home.html](/home/pranav/PyCharm/Parveen/nbs_readapt/templates/core/home.html)
-
-Main frontend assets:
-
 - [app.css](/home/pranav/PyCharm/Parveen/nbs_readapt/static/css/app.css)
 - [app.js](/home/pranav/PyCharm/Parveen/nbs_readapt/static/js/app.js)
 
-Current UI sections:
+Current Django-backed UI sections:
 
 - search and browse
 - map

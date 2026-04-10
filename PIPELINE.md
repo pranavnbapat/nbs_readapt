@@ -147,6 +147,22 @@ Not implemented yet:
 - neural index population
 - hybrid retrieval pipelines
 
+## Reindex rule
+
+OpenSearch is derived from PostgreSQL, not the other way around.
+
+That means:
+
+- importing new Excel data requires reindexing
+- direct PostgreSQL edits to searchable record fields also require reindexing
+- if repository data changes in PostgreSQL and should appear in search, refresh the OpenSearch index
+
+Current safe command:
+
+```bash
+docker compose exec web python manage.py index_repository_records --recreate
+```
+
 ## Stage 5: QA and reconciliation
 
 Purpose:
@@ -185,6 +201,29 @@ Short answer:
 - no, you should not normally add new repository data directly through pgAdmin
 
 pgAdmin is for inspection and QA. Excel plus the Django import pipeline is the operational ingestion path.
+
+## Direct PostgreSQL edits
+
+Yes, data can be added or edited directly in PostgreSQL, including through pgAdmin, but that should be treated as the exception path.
+
+Use direct DB changes only for:
+
+- one-off correction
+- emergency maintenance
+- carefully controlled admin edits
+
+Do not use direct DB insertion as the normal ingestion workflow, because it bypasses:
+
+- source validation
+- normalization rules
+- source import traceability
+- predictable taxonomy handling
+- import batch history
+
+Operational rule:
+
+- normal new data: Excel -> validation -> import pipeline
+- manual correction: PostgreSQL only when necessary
 
 ## Source schema expectations
 

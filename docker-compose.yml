@@ -1,5 +1,6 @@
 services:
   web:
+    image: ${APP_IMAGE:-ghcr.io/pranavnbapat/nbs_readapt:latest}
     build:
       context: .
       dockerfile: Dockerfile

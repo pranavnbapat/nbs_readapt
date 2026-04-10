@@ -3236,8 +3236,9 @@ function updateCountryStats(){
 function initLandingMap(){
   if(landingMap) return;
   landingMap=L.map("landing-map",{zoomControl:true}).setView([52,12],3);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
-    attribution:"© <a href='https://openstreetmap.org'>OpenStreetMap</a>",maxZoom:18
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",{
+    subdomains:"abcd",
+    attribution:"© <a href='https://openstreetmap.org'>OpenStreetMap</a> contributors © <a href='https://carto.com/attributions'>CARTO</a>",maxZoom:20
   }).addTo(landingMap);
   landingMarkers=L.layerGroup().addTo(landingMap);
   // Show all pins
@@ -3473,8 +3474,9 @@ function toggleChoropleth(btn) {
 function initMap(){
   if(leafletMap) return;
   leafletMap=L.map("leaflet-map",{zoomControl:true}).setView([52,12],4);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
-    attribution:"© <a href='https://openstreetmap.org'>OpenStreetMap</a>",maxZoom:18
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",{
+    subdomains:"abcd",
+    attribution:"© <a href='https://openstreetmap.org'>OpenStreetMap</a> contributors © <a href='https://carto.com/attributions'>CARTO</a>",maxZoom:20
   }).addTo(leafletMap);
   markerLayer=L.layerGroup().addTo(leafletMap);
   // NbS pills

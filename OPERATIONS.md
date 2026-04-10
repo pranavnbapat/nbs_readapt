@@ -4,14 +4,14 @@ This document explains how to run the stack, access each service, and operate th
 
 ## Running services
 
-Current Docker Compose services:
+Current local Docker Compose services:
 
 - `web`: Django application container
 - `postgres`: PostgreSQL database
 - `pgadmin`: database UI
 - `opensearch`: search engine
 
-Current container names:
+Current local container names:
 
 - `nbs_readapt_web`
 - `nbs_readapt_postgres`
@@ -23,6 +23,18 @@ Current runtime status can be checked with:
 ```bash
 docker compose ps
 ```
+
+## Port policy
+
+All host-facing local ports stay in the `9500-9599` range.
+
+Current assignments:
+
+- `9500`: Django app
+- `9501`: PostgreSQL
+- `9502`: pgAdmin
+- `9503`: OpenSearch API
+- `9504`: OpenSearch metrics
 
 ## Start and stop
 
@@ -113,7 +125,12 @@ chmod +x scripts/*.sh
 Frontend application:
 
 - URL: `http://localhost:9500/`
-- Purpose: search, browse, map, analytics, shortlist, record detail modal
+- Purpose: reference-style default frontend
+
+Live Django application UI:
+
+- URL: `http://localhost:9500/live/`
+- Purpose: backend-driven search, browse, map, analytics, shortlist, record detail modal
 
 Django admin:
 
@@ -168,6 +185,12 @@ Suggested pgAdmin server registration:
 - Username: `POSTGRES_USER`
 - Password: `POSTGRES_PASSWORD`
 
+Important usage rule:
+
+- use pgAdmin for inspection, QA, and occasional manual correction
+- do not use pgAdmin as the normal bulk-ingestion path
+- normal repository intake should come through the Excel import pipeline
+
 ## OpenSearch access
 
 OpenSearch API:
@@ -189,6 +212,55 @@ Quick checks:
 ```bash
 curl -sS http://127.0.0.1:9503/
 curl -sS http://127.0.0.1:9503/_cat/indices?v
+```
+
+## Rebuild policy
+
+Use the normal startup path for code-only changes:
+
+```bash
+bash scripts/up.sh
+```
+
+Use a rebuild when you changed the image inputs:
+
+- `Dockerfile`
+- Python dependencies
+- system packages
+- image entrypoints
+
+```bash
+bash scripts/rebuild.sh
+```
+
+Use a data refresh when you changed import or indexing logic:
+
+```bash
+bash scripts/refresh_repository_data.sh
+```
+
+## Data change policy
+
+Preferred path for new data:
+
+1. validate Excel source files
+2. import into PostgreSQL
+3. rebuild the OpenSearch index
+
+Typical commands:
+
+```bash
+docker compose exec web python manage.py validate_repository_sources
+docker compose exec web python manage.py import_repository_sources
+docker compose exec web python manage.py index_repository_records --recreate
+```
+
+Direct PostgreSQL edits are possible, including through pgAdmin, but they are an exception workflow.
+
+If searchable repository data changes in PostgreSQL, reindex OpenSearch afterwards:
+
+```bash
+docker compose exec web python manage.py index_repository_records --recreate
 ```
 
 ## Environment file
@@ -261,6 +333,8 @@ Key repository workflows already available:
 - view record details in modal
 - build a local shortlist
 - inspect repository aggregates and mapped records
+
+For production deployment, use [DEPLOY_TRAEFIK.md](/home/pranav/PyCharm/Parveen/nbs_readapt/DEPLOY_TRAEFIK.md).
 
 ## Admin workflows
 
