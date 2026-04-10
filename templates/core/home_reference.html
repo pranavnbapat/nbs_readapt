@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}NbS Knowledge Repository — ReAdapt ESPON 2030{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/home_reference.css">
+{% endblock %}
+
+{% block body %}
+<div class="ref-shell">
+  <header id="hdr">
+    <div>
+      <div class="sub">ESPON ReAdapt 2030</div>
+      <h1>NbS Knowledge Repository </h1>
+    </div>
+    <div class="hdr-divider"></div>
+    <div class="hdr-stats">
+      <div class="hdr-stat">{{ total_records }} records in the current repository</div>
+      <div class="hdr-stat">{{ dataset_counts.papers|default:0 }} papers · {{ dataset_counts.network_projects|default:0 }} network projects</div>
+      <div class="hdr-stat">{{ dataset_counts.eu_projects|default:0 }} EU projects · {{ dataset_counts.policies|default:0 }} policies</div>
+    </div>
+    <a class="hdr-badge" href="/legacy/">Open legacy view</a>
+  </header>
+
+  <nav id="nav">
+    <button class="nav-tab tablink active" data-tab="home">🏠 Home</button>
+    <button class="nav-tab tablink" data-tab="search">📚 Knowledge Base</button>
+    <button class="nav-tab tablink" data-tab="analytics">📊 Analytics</button>
+    <button class="nav-tab tablink" data-tab="map">🗺️ Full Map</button>
+    <a class="nav-tab nav-link" href="/legacy/">Legacy</a>
+  </nav>
+
+  <div class="subnav">
+    <button id="run-search" class="subnav-btn subnav-highlight" type="button">Refresh results</button>
+    <button id="reset-filters" class="subnav-btn" type="button">Reset filters</button>
+    <div class="subnav-sep"></div>
+    <span class="subnav-copy">Knowledge Base</span>
+    <div class="subnav-sep"></div>
+    <a class="subnav-link" href="/repository/overview/">Repository Overview</a>
+    <a class="subnav-link" href="/repository/qa/">QA Snapshot</a>
+  </div>
+
+  <main id="content">
+    <section class="tab tabpanel active" data-panel="home">
+      <div id="landing">
+        <aside id="landing-left">
+          <div class="intro-card">
+            <div class="hazard-label">About This Repository</div>
+            <p>
+              This knowledge repository is part of <strong>ESPON ReAdapt</strong> and brings together curated records on
+              Nature-based Solutions across scientific papers, network projects, EU projects, and policies.
+            </p>
+          </div>
+
+          <div class="landing-title">Explore NbS evidence across Europe</div>
+          <div class="landing-sub">
+            Search the knowledge base or use the quick filters below to explore where Nature-based Solutions have been
+            studied across Europe.
+          </div>
+
+          <label class="landing-field">
+            <span>Quick Search</span>
+            <input id="search-input" type="search" placeholder="Search by topic, country, city, NbS type...">
+          </label>
+
+          <div class="selection-summary">
+            <div class="selection-summary-head">
+              <strong>Current Search State</strong>
+              <span class="selection-summary-status">Live filters</span>
+            </div>
+            <div id="active-filters" class="active-filters"></div>
+          </div>
+
+          <div class="hazard-label">Step 1 - Climate Challenge? <span class="label-note">(select one or more)</span></div>
+          <div id="home-hazard-grid" class="hazard-grid"></div>
+
+          <div class="territory-label">Step 2 - Territory Type? <span class="label-note">(select one or more)</span></div>
+          <div id="home-geography-pills" class="ter-pills"></div>
+
+          <div class="scale-label">Step 3 - Evidence Source? <span class="label-note">(select one or more)</span></div>
+          <div id="home-dataset-pills" class="ter-pills"></div>
+
+          <div class="quick-actions">
+            <button class="quick-link" type="button" data-tab-target="search">Browse these records</button>
+            <button class="quick-link" type="button" data-tab-target="analytics">Analytics</button>
+            <button class="quick-link" type="button" data-tab-target="map">Full map</button>
+          </div>
+
+          <div class="explore-card">
+            <div class="mini-kicker">Explore All Evidence</div>
+            <div class="explore-links">
+              <button class="explore-link" type="button" data-tab-target="search">All {{ total_records }} records</button>
+              <button class="explore-link" type="button" data-tab-target="analytics">Analytics</button>
+              <button class="explore-link" type="button" data-tab-target="map">Full Map</button>
+            </div>
+          </div>
+
+          <details class="advanced-filters">
+            <summary>Advanced Filters</summary>
+            <div class="filter-callout">
+              <strong>Detailed filters live here.</strong>
+              These controls are also reset by <em>Reset filters</em> in the green bar above.
+            </div>
+            <div class="landing-grid">
+              <label class="landing-field">
+                <span>Source Type</span>
+                <select id="filter-source-dataset" multiple size="4"></select>
+              </label>
+              <label class="landing-field">
+                <span>Country</span>
+                <select id="filter-country" multiple size="5"></select>
+              </label>
+              <label class="landing-field">
+                <span>Geography Type</span>
+                <select id="filter-geography-type" multiple size="5"></select>
+              </label>
+              <label class="landing-field">
+                <span>Hazard</span>
+                <select id="filter-hazard" multiple size="5"></select>
+              </label>
+              <label class="landing-field">
+                <span>NbS Type</span>
+                <select id="filter-nbs-type" multiple size="5"></select>
+              </label>
+              <label class="landing-field">
+                <span>Implementation Stage</span>
+                <select id="filter-implementation-stage" multiple size="4"></select>
+              </label>
+              <label class="landing-field">
+                <span>Policy Level</span>
+                <select id="filter-policy-level" multiple size="4"></select>
+              </label>
+            </div>
+            <div class="landing-years">
+              <label class="landing-field">
+                <span>Year From</span>
+                <input id="filter-year-gte" type="number" min="1900" max="2100">
+              </label>
+              <label class="landing-field">
+                <span>Year To</span>
+                <input id="filter-year-lte" type="number" min="1900" max="2100">
+              </label>
+            </div>
+          </details>
+
+          <div class="landing-mini">
+            <div class="panel-mini-head">
+              <strong>Shortlist</strong>
+              <button id="clear-shortlist" class="landing-tip" type="button">Clear</button>
+            </div>
+            <p id="shortlist-meta" class="mini-subtle">No records shortlisted yet.</p>
+            <div id="shortlist-items" class="shortlist-items ref-shortlist"></div>
+          </div>
+        </aside>
+
+        <section id="landing-right">
+          <div id="landing-map"></div>
+          <div class="map-overlay">
+            <div class="map-overlay-card">
+              <div class="mini-kicker">Repository Coverage</div>
+              <strong>{{ total_records }} records · {{ geocoded_records }} mapped</strong>
+              <p>The home map uses the current live filter state and colors points by hazard theme.</p>
+            </div>
+            <div id="landing-map-legend" class="landing-map-legend"></div>
+          </div>
+          <div class="map-tip" id="landing-map-tip">
+            Live evidence map from the current search state.
+            <span id="landing-map-count"></span>
+            <span class="map-tip-link" data-tab-target="search">Open matching records</span>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="tab tabpanel" data-panel="search">
+      <div class="ref-panel search-panel">
+        <div class="results-stage-head">
+          <div>
+            <div class="hazard-label">Knowledge Base</div>
+            <h3>Search & Browse</h3>
+          </div>
+          <div class="results-actions">
+            <button class="quick-link" type="button" data-tab-target="home">Back to Home Explorer</button>
+            <a class="landing-tip" href="/legacy/">Open legacy UI</a>
+          </div>
+        </div>
+        <div class="results-intro">
+          <span id="results-meta">Loading repository records...</span>
+          <span class="results-hint">Home holds the filters. This tab is the detailed result workbench for the current filter state.</span>
+        </div>
+        <div id="results-list" class="results-list ref-results"></div>
+      </div>
+    </section>
+
+    <section class="tab tabpanel" data-panel="map">
+      <div class="ref-panel">
+        <div class="results-stage-head">
+          <div>
+            <div class="hazard-label">Map View</div>
+            <h3>Evidence Map</h3>
+          </div>
+          <p id="map-meta" class="mini-subtle">No map data loaded yet.</p>
+        </div>
+        <div class="map-layout ref-map-layout">
+          <div id="map-canvas"></div>
+          <div class="map-sidebar ref-map-sidebar">
+            <div class="landing-mini">
+              <strong>Mapped Records</strong>
+              <div id="map-list" class="stack-list compact-list"></div>
+            </div>
+            <div class="landing-mini">
+              <strong>Map Logic</strong>
+              <p class="mini-subtle">The map uses the same live search and filter state as the home view.</p>
+            </div>
+            <div class="landing-mini">
+              <strong>Geography Coverage</strong>
+              <p class="mini-subtle">Records can be country, multi-country, supranational, global, or transnational-region scoped.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab tabpanel" data-panel="analytics">
+      <div class="ref-panel">
+        <div class="analytics-intro">
+          <div class="analytics-intro-copy">
+            <div class="hazard-label">Evidence Analytics</div>
+            <h3>Explore the evidence landscape across dataset type, implementation stage, hazards, and time.</h3>
+            <p class="mini-subtle">
+              This section borrows the editorial feel of the original prototype, but the numbers come from the normalized repository database and live search facets.
+            </p>
+          </div>
+          <div class="analytics-key-finding">
+            <strong>Repository signal</strong>
+            Flooding and green infrastructure remain among the strongest visible themes, reflecting how the current imported evidence base is distributed.
+          </div>
+        </div>
+        <div class="results-stage-head">
+          <div>
+            <div class="hazard-label">Repository Analytics</div>
+            <h3>Signals from the normalized repository</h3>
+          </div>
+        </div>
+        <div class="analytics-grid">
+          <article class="mini-card analytics-wide">
+            <h3>Repository Context</h3>
+            <p class="mini-subtle">
+              These summaries are generated from the normalized repository database and live search facets, not from hard-coded arrays in a static HTML file.
+            </p>
+          </article>
+          <article class="mini-card">
+            <h3>Total Records</h3>
+            <div class="metric-big">{{ total_records }}</div>
+            <p class="mini-subtle">All searchable records currently loaded into PostgreSQL and OpenSearch.</p>
+          </article>
+          <article class="mini-card">
+            <h3>Mapped Records</h3>
+            <div class="metric-big">{{ geocoded_records }}</div>
+            <p class="mini-subtle">Records with usable coordinates for the live evidence map.</p>
+          </article>
+          <article class="mini-card">
+            <h3>By Dataset</h3>
+            <div id="analytics-datasets" class="stack-list"></div>
+          </article>
+          <article class="mini-card">
+            <h3>Implementation Stage</h3>
+            <div id="analytics-implementation" class="stack-list"></div>
+          </article>
+          <article class="mini-card analytics-wide">
+            <h3>Records by Year</h3>
+            <p class="mini-subtle analytics-card-subtle">Publication and project years from the normalized repository records.</p>
+            <div id="analytics-years" class="year-bars"></div>
+          </article>
+          <article class="mini-card">
+            <h3>Top Hazards</h3>
+            <div id="analytics-hazards" class="stack-list"></div>
+          </article>
+          <article class="mini-card">
+            <h3>Top NbS Types</h3>
+            <div id="analytics-nbs" class="stack-list"></div>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="footer">
+    <div class="fl">Live Django app · PostgreSQL source of truth · OpenSearch BM25 index</div>
+    <div class="fr">
+      <a href="/repository/overview/">Repository overview</a>
+      <a href="/repository/qa/">QA report</a>
+      <a href="/legacy/">Legacy view</a>
+    </div>
+  </footer>
+</div>
+
+<div id="record-modal" class="record-modal">
+  <div class="record-dialog">
+    <div class="panel-head">
+      <div>
+        <p id="modal-type" class="eyebrow">Record</p>
+        <h2 id="modal-title">Record detail</h2>
+      </div>
+      <button id="close-modal" class="ghost-btn" type="button">Close</button>
+    </div>
+    <div id="modal-meta" class="result-meta"></div>
+    <div id="modal-summary" class="detail-summary"></div>
+    <div id="modal-sections" class="detail-grid"></div>
+  </div>
+</div>
+
+<script>
+  window.NBS_APP_BOOT = {
+    totalRecords: {{ total_records|default:0 }},
+    datasets: {
+      papers: {{ dataset_counts.papers|default:0 }},
+      networkProjects: {{ dataset_counts.network_projects|default:0 }},
+      euProjects: {{ dataset_counts.eu_projects|default:0 }},
+      policies: {{ dataset_counts.policies|default:0 }}
+    }
+  };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="/static/js/app.js"></script>
+{% endblock %}

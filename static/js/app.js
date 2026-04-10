@@ -1,7 +1,14 @@
 (function () {
+  const EUROPE_BOUNDS = [
+    [27.5, -25.0],
+    [71.5, 45.0],
+  ];
+
   const state = {
     map: null,
     markers: [],
+    landingMap: null,
+    landingMarkers: [],
     analytics: null,
     facets: null,
     shortlist: [],
@@ -12,12 +19,19 @@
   const els = {
     tabs: document.querySelectorAll(".tablink"),
     panels: document.querySelectorAll(".tabpanel"),
+    tabTargets: document.querySelectorAll("[data-tab-target]"),
     searchInput: document.getElementById("search-input"),
     runSearch: document.getElementById("run-search"),
     resetFilters: document.getElementById("reset-filters"),
     resultsMeta: document.getElementById("results-meta"),
     activeFilters: document.getElementById("active-filters"),
     resultsList: document.getElementById("results-list"),
+    landingMap: document.getElementById("landing-map"),
+    landingMapCount: document.getElementById("landing-map-count"),
+    landingMapLegend: document.getElementById("landing-map-legend"),
+    homeHazardGrid: document.getElementById("home-hazard-grid"),
+    homeGeographyPills: document.getElementById("home-geography-pills"),
+    homeDatasetPills: document.getElementById("home-dataset-pills"),
     mapMeta: document.getElementById("map-meta"),
     mapList: document.getElementById("map-list"),
     filters: {
@@ -46,6 +60,34 @@
     modalMeta: document.getElementById("modal-meta"),
     modalSummary: document.getElementById("modal-summary"),
     modalSections: document.getElementById("modal-sections"),
+  };
+
+  const hazardIcons = {
+    Flooding: "🌊",
+    "Extreme temperature events": "🌡️",
+    "Precipitation extremes and drought": "🏜️",
+    "Sea level rise and coastal change": "🌊",
+    "Storms and cyclones": "🌪️",
+    Wildfires: "🔥",
+    "Biological hazards": "🦠",
+    "Oceanic change": "🌊",
+    "Land degradation": "🌱",
+    "Cryosphere change": "❄️",
+    "Air pollution": "🌫️",
+  };
+
+  const hazardColors = {
+    Flooding: "#2f80c8",
+    "Extreme temperature events": "#d97706",
+    "Precipitation extremes and drought": "#d9a441",
+    "Sea level rise and coastal change": "#2aa6a4",
+    "Storms and cyclones": "#7c5ce0",
+    Wildfires: "#d94841",
+    "Biological hazards": "#48a868",
+    "Oceanic change": "#2389b5",
+    "Land degradation": "#879b2b",
+    "Cryosphere change": "#5b7be3",
+    "Air pollution": "#7e8794",
   };
 
   function loadShortlist() {
@@ -94,6 +136,75 @@
       if (previous.has(item.key)) option.selected = true;
       select.appendChild(option);
     });
+  }
+
+  function facetSelected(key, value) {
+    const select = els.filters[key];
+    if (!select) return false;
+    return Array.from(select.selectedOptions).some((option) => option.value === value);
+  }
+
+  function toggleFacetSelection(key, value) {
+    const select = els.filters[key];
+    if (!select) return;
+    const option = Array.from(select.options).find((item) => item.value === value);
+    if (!option) return;
+    option.selected = !option.selected;
+    runSearch().catch(handleError);
+  }
+
+  function attachQuickFilterHandlers(container, key) {
+    if (!container) return;
+    container.querySelectorAll("[data-filter-value]").forEach((button) => {
+      button.addEventListener("click", () => toggleFacetSelection(key, button.dataset.filterValue));
+    });
+  }
+
+  function renderQuickFacetButtons() {
+    if (els.homeHazardGrid) {
+      const hazards = (state.facets?.hazards || []).slice(0, 6);
+      els.homeHazardGrid.innerHTML = hazards
+        .map((item) => {
+          const active = facetSelected("hazard", item.key) ? "active" : "";
+          const icon = hazardIcons[item.key] || "📍";
+          return `
+            <button class="hazard-card ${active}" type="button" data-filter-value="${item.key}">
+              <div class="hazard-card-top">
+                <span class="hazard-icon">${icon}</span>
+                <span>
+                  <span class="hazard-name">${item.key}</span>
+                  <span class="hazard-count">${item.doc_count} records</span>
+                </span>
+              </div>
+            </button>
+          `;
+        })
+        .join("");
+      attachQuickFilterHandlers(els.homeHazardGrid, "hazard");
+    }
+
+    if (els.homeGeographyPills) {
+      const geography = (state.facets?.geography_type || []).slice(0, 6);
+      els.homeGeographyPills.innerHTML = geography
+        .map((item) => {
+          const active = facetSelected("geography_type", item.key) ? "active" : "";
+          return `<button class="ter-pill ${active}" type="button" data-filter-value="${item.key}">${item.key}</button>`;
+        })
+        .join("");
+      attachQuickFilterHandlers(els.homeGeographyPills, "geography_type");
+    }
+
+    if (els.homeDatasetPills) {
+      const datasets = state.facets?.source_dataset || [];
+      els.homeDatasetPills.innerHTML = datasets
+        .map((item) => {
+          const active = facetSelected("source_dataset", item.key) ? "active" : "";
+          const label = item.key.replaceAll("_", " ");
+          return `<button class="ter-pill ${active}" type="button" data-filter-value="${item.key}">${label}</button>`;
+        })
+        .join("");
+      attachQuickFilterHandlers(els.homeDatasetPills, "source_dataset");
+    }
   }
 
   function renderFilterChips() {
@@ -319,48 +430,122 @@
     populateSelect(els.filters.nbs_type, payload.nbs_types || []);
     populateSelect(els.filters.implementation_stage, payload.implementation_stage || []);
     populateSelect(els.filters.policy_level, payload.policy_level || []);
+    renderQuickFacetButtons();
   }
 
-  function clearMarkers() {
-    state.markers.forEach((marker) => marker.remove());
-    state.markers = [];
+  function clearMarkerSet(markers) {
+    markers.forEach((marker) => marker.remove());
+    markers.length = 0;
+  }
+
+  function markerColor(record) {
+    const hazard = (record.all_hazards || [])[0];
+    return hazardColors[hazard] || "#2f9b73";
   }
 
   function ensureMap() {
     if (state.map) return state.map;
-    state.map = L.map("map-canvas", { scrollWheelZoom: true }).setView([51.2, 10.5], 4);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "&copy; OpenStreetMap contributors",
+    state.map = L.map("map-canvas", { scrollWheelZoom: true });
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 20,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
     }).addTo(state.map);
+    state.map.fitBounds(EUROPE_BOUNDS, { padding: [12, 12] });
     return state.map;
   }
 
-  function renderMap(payload) {
-    const map = ensureMap();
-    clearMarkers();
+  function ensureLandingMap() {
+    if (!els.landingMap) return null;
+    if (state.landingMap) return state.landingMap;
+    state.landingMap = L.map("landing-map", { zoomControl: true, scrollWheelZoom: true });
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 20,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    }).addTo(state.landingMap);
+    state.landingMap.fitBounds(EUROPE_BOUNDS, { padding: [12, 12] });
+    return state.landingMap;
+  }
+
+  function renderLandingLegend(points) {
+    if (!els.landingMapLegend) return;
+    const used = [];
+    points.forEach((record) => {
+      const hazard = (record.all_hazards || [])[0] || "Other";
+      if (!used.includes(hazard)) used.push(hazard);
+    });
+    els.landingMapLegend.innerHTML = used.slice(0, 6)
+      .map((hazard) => {
+        const color = hazardColors[hazard] || "#2f9b73";
+        return `<span class="legend-item"><span class="legend-dot" style="background:${color}"></span>${hazard}</span>`;
+      })
+      .join("");
+  }
+
+  function renderLandingMap(payload) {
+    const map = ensureLandingMap();
+    if (!map) return;
+    clearMarkerSet(state.landingMarkers);
     const points = payload.hits.filter((record) => Number.isFinite(record.latitude) && Number.isFinite(record.longitude));
 
     if (!points.length) {
-      els.mapMeta.textContent = "No geocoded results for the current search state.";
-      els.mapList.innerHTML = "";
-      map.setView([51.2, 10.5], 4);
+      map.fitBounds(EUROPE_BOUNDS, { padding: [12, 12] });
+      if (els.landingMapCount) els.landingMapCount.textContent = "";
+      if (els.landingMapLegend) els.landingMapLegend.innerHTML = "";
       return;
     }
 
     const bounds = [];
     points.forEach((record) => {
+      const color = markerColor(record);
+      const marker = L.circleMarker([record.latitude, record.longitude], {
+        radius: 4.5,
+        color: "#ffffff",
+        weight: 1.4,
+        fillColor: color,
+        fillOpacity: 0.95,
+      }).addTo(map);
+      marker.bindPopup(`<strong>${record.title}</strong><br>${record.country_display || ""}`);
+      state.landingMarkers.push(marker);
+      bounds.push([record.latitude, record.longitude]);
+    });
+    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 4 });
+    if (els.landingMapCount) {
+      els.landingMapCount.textContent = `${points.length} mapped results`;
+    }
+    renderLandingLegend(points);
+  }
+
+  function renderMap(payload) {
+    const map = ensureMap();
+    clearMarkerSet(state.markers);
+    const points = payload.hits.filter((record) => Number.isFinite(record.latitude) && Number.isFinite(record.longitude));
+
+    if (!points.length) {
+      els.mapMeta.textContent = "No geocoded results for the current search state.";
+      els.mapList.innerHTML = "";
+      map.fitBounds(EUROPE_BOUNDS, { padding: [12, 12] });
+      return;
+    }
+
+    const bounds = [];
+    points.forEach((record) => {
+      const color = markerColor(record);
       const marker = L.circleMarker([record.latitude, record.longitude], {
         radius: 7,
-        color: "#237849",
-        weight: 1,
-        fillColor: "#89b68a",
-        fillOpacity: 0.85,
+        color: "#ffffff",
+        weight: 1.2,
+        fillColor: color,
+        fillOpacity: 0.92,
       }).addTo(map);
       marker.bindPopup(`<strong>${record.title}</strong><br>${record.country_display || ""}`);
       state.markers.push(marker);
       bounds.push([record.latitude, record.longitude]);
     });
-    map.fitBounds(bounds, { padding: [30, 30] });
+    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 5 });
     els.mapMeta.textContent = `${points.length} mapped records from the current search state.`;
     els.mapList.innerHTML = points
       .slice(0, 6)
@@ -432,6 +617,7 @@
       fetchJson(`/search/query/?${buildParams({ size: 250 }).toString()}`),
     ]);
     renderResults(queryPayload);
+    renderLandingMap(mapPayload);
     renderMap(mapPayload);
     await refreshFacets();
   }
@@ -459,13 +645,17 @@
   function switchTab(nextTab) {
     els.tabs.forEach((button) => button.classList.toggle("active", button.dataset.tab === nextTab));
     els.panels.forEach((panel) => panel.classList.toggle("active", panel.dataset.panel === nextTab));
-    if (nextTab === "map" && state.map) {
-      setTimeout(() => state.map.invalidateSize(), 50);
-    }
+    setTimeout(() => {
+      if (nextTab === "map" && state.map) state.map.invalidateSize();
+      if (nextTab === "home" && state.landingMap) state.landingMap.invalidateSize();
+    }, 50);
   }
 
   els.tabs.forEach((button) => {
     button.addEventListener("click", () => switchTab(button.dataset.tab));
+  });
+  els.tabTargets.forEach((button) => {
+    button.addEventListener("click", () => switchTab(button.dataset.tabTarget));
   });
   els.runSearch.addEventListener("click", () => runSearch().catch(handleError));
   els.resetFilters.addEventListener("click", resetFilters);

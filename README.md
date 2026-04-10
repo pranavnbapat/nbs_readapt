@@ -70,6 +70,37 @@ docker compose exec web python manage.py index_repository_records --recreate
 docker compose exec web python manage.py report_repository_qa --output data/exports/repository_qa_report.json
 ```
 
+## Adding new Excel data
+
+Use Excel as the intake path. Do not use pgAdmin for normal data ingestion.
+
+Short operator flow:
+
+1. place the new Excel file in the chosen input directory
+2. confirm whether it matches an existing registered source shape
+3. if it matches, register/select it and validate it
+4. if it does not match, add a new source spec and extend the normalizer first
+5. import into PostgreSQL
+6. rebuild the OpenSearch index
+7. run QA
+
+Operator commands:
+
+```bash
+docker compose exec web python manage.py validate_repository_sources
+docker compose exec web python manage.py import_repository_sources
+docker compose exec web python manage.py prepare_search_documents
+docker compose exec web python manage.py index_repository_records --recreate
+docker compose exec web python manage.py report_repository_qa
+```
+
+Important rule:
+
+- new Excel files should follow a known schema or column structure if you want no-code ingestion
+- if the file uses a new column layout, naming convention, worksheet name, or value pattern, the importer must be updated first
+
+See [PIPELINE.md](/home/pranav/PyCharm/Parveen/nbs_readapt/PIPELINE.md) for the detailed SOP and schema expectations.
+
 ## Main URLs
 
 - App UI: `http://localhost:9500/`

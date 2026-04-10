@@ -450,6 +450,9 @@ select {
   align-items: flex-end;
   gap: 8px;
   min-height: 220px;
+  padding: 8px 4px 42px;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .year-bar {
@@ -469,6 +472,7 @@ select {
   font-family: "Segoe UI", sans-serif;
   font-size: 11px;
   color: var(--ink-soft);
+  white-space: nowrap;
 }
 
 .empty-state {

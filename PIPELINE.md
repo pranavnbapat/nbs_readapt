@@ -179,6 +179,119 @@ The importer currently normalizes:
 
 ## What to do when new Excel files arrive
 
+Short answer:
+
+- yes, new Excel files should follow a known schema, worksheet name, and column structure if you want them to import cleanly without code changes
+- no, you should not normally add new repository data directly through pgAdmin
+
+pgAdmin is for inspection and QA. Excel plus the Django import pipeline is the operational ingestion path.
+
+## Source schema expectations
+
+The importer is schema-aware, not schema-agnostic.
+
+Each registered Excel source is defined in:
+
+- [source_specs.py](/home/pranav/PyCharm/Parveen/nbs_readapt/apps/repository/source_specs.py)
+
+For each source, the importer expects:
+
+- a specific filename
+- a specific worksheet name
+- a specific source ID column
+- a specific normalizer key
+- a minimum set of required columns
+
+Current required-column contracts are:
+
+- `papers`
+  - sheet: `Sheet1`
+  - source ID column: `PAPER_ID`
+  - required columns:
+    - `PAPER_ID`
+    - `Article_Title`
+    - `Publication_Year`
+    - `Specific_Countries_Name`
+    - `Climate hazard, primary`
+    - `NBS Intervention type term`
+- `network_projects`
+  - sheet: `Sheet1`
+  - source ID column: `ID_INT`
+  - required columns:
+    - `ID_INT`
+    - `Project_Title`
+    - `Starting_Year`
+    - `Country_Name`
+    - `NbS_Type_Primary`
+    - `Climate_Hazard_Primary`
+- `eu_projects`
+  - sheet: `Sheet1`
+  - source ID column: `ID_INT`
+  - required columns:
+    - `ID_INT`
+    - `Project_Title`
+    - `Starting_Year`
+    - `Country_Name`
+    - `NbS_Type_Primary`
+    - `Climate_Hazard_Primary`
+- `policies`
+  - sheet: `NbS Policies`
+  - source ID column: `Record_ID`
+  - required columns:
+    - `Record_ID`
+    - `Document_Title`
+    - `Policy_Level`
+    - `Country_Name`
+    - `Year`
+    - `NbS_Type_Primary`
+    - `Climate_Hazard_Primary`
+
+What this means operationally:
+
+- if a new Excel file follows one of these existing shapes closely, ingestion is straightforward
+- if a new Excel file changes column names, sheet names, value conventions, or dataset semantics, it is a new source shape and needs code support
+
+## Operator SOP: add a new Excel file
+
+### Case A: file matches an existing source shape
+
+1. place the file in the input directory
+2. register it in [source_specs.py](/home/pranav/PyCharm/Parveen/nbs_readapt/apps/repository/source_specs.py) if needed
+3. run validation
+4. import into PostgreSQL
+5. prepare or rebuild the OpenSearch document layer
+6. reindex OpenSearch
+7. run QA
+
+Commands:
+
+```bash
+docker compose exec web python manage.py validate_repository_sources
+docker compose exec web python manage.py import_repository_sources
+docker compose exec web python manage.py prepare_search_documents
+docker compose exec web python manage.py index_repository_records --recreate
+docker compose exec web python manage.py report_repository_qa
+```
+
+### Case B: file has a new schema or new semantics
+
+1. inspect the new workbook and identify:
+   - worksheet name
+   - unique row identifier column
+   - title field
+   - year/date fields
+   - country/geography fields
+   - hazard fields
+   - NbS type fields
+2. add a new `SourceSpec` in [source_specs.py](/home/pranav/PyCharm/Parveen/nbs_readapt/apps/repository/source_specs.py)
+3. extend the normalization logic in [services.py](/home/pranav/PyCharm/Parveen/nbs_readapt/apps/repository/services.py)
+4. run validation
+5. import into PostgreSQL
+6. reindex OpenSearch
+7. run QA
+
+If step 2 and step 3 are not done, the file may fail validation or import with poor-quality normalization.
+
 If the new file matches an existing source shape:
 
 1. place the file in the chosen input directory

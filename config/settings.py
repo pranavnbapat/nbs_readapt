@@ -16,11 +16,22 @@ def env(name: str, default: str | None = None) -> str | None:
 
 SECRET_KEY = env("APP_SECRET_KEY", "dev-only-insecure-key")
 DEBUG = env("APP_DEBUG", "true").lower() == "true"
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+USE_X_FORWARDED_HOST = env("USE_X_FORWARDED_HOST", "true").lower() == "true"
+SECURE_SSL_REDIRECT = env("SECURE_SSL_REDIRECT", "false").lower() == "true"
+SESSION_COOKIE_SECURE = env("SESSION_COOKIE_SECURE", "false").lower() == "true"
+CSRF_COOKIE_SECURE = env("CSRF_COOKIE_SECURE", "false").lower() == "true"
 
 ALLOWED_HOSTS = [
     host.strip()
     for host in env("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
     if host.strip()
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in env("CSRF_TRUSTED_ORIGINS", "").split(",")
+    if origin.strip()
 ]
 
 INSTALLED_APPS = [

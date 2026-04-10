@@ -1,8 +1,8 @@
-Django==5.2.6
-djangorestframework==3.16.1
-gunicorn==23.0.0
+Django==6.0.3
+djangorestframework==3.17.1
+gunicorn==25.3.0
 openpyxl==3.1.5
 opensearch-py==3.1.0
-pandas==2.3.3
-psycopg[binary]==3.2.9
-python-dotenv==1.2.1
+pandas==3.0.2
+psycopg[binary]==3.3.3
+python-dotenv==1.2.2
