@@ -2062,15 +2062,16 @@ body{
 <div class="tab" id="tab-chat">
   <div id="chat-wrap">
     <div id="chat-sidebar">
-      <div class="chat-sidebar-head">API Key</div>
+      <div class="chat-sidebar-head">Assistant settings</div>
       <div style="margin-bottom:12px;">
-        <input id="chat-api-key" type="password"
-          placeholder="sk-ant-…"
-          style="width:100%;border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 8px;font-size:11px;font-family:var(--font-body);color:var(--ink);background:var(--paper);outline:none;box-sizing:border-box;"
-          oninput="sessionStorage.setItem('nbs_api_key',this.value)"
-          onfocus="this.style.borderColor='var(--forest-mid)'"
-          onblur="this.style.borderColor='var(--border)'">
-        <div style="font-size:10px;color:var(--ink-3);margin-top:4px;line-height:1.4;">Your key is stored in this browser session only and never sent anywhere except the Anthropic API.</div>
+        <label for="chat-response-style" style="display:block;font-size:10px;color:var(--ink-3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em;">Response length</label>
+        <select id="chat-response-style"
+          style="width:100%;border:1px solid var(--border);border-radius:var(--r-sm);padding:6px 8px;font-size:11px;font-family:var(--font-body);color:var(--ink);background:var(--paper);outline:none;box-sizing:border-box;">
+          <option value="brief">Brief</option>
+          <option value="standard" selected>Standard</option>
+          <option value="detailed">Detailed</option>
+        </select>
+        <div style="font-size:10px;color:var(--ink-3);margin-top:4px;line-height:1.4;">This assistant uses the server-side repository model connection. No browser API key is required.</div>
       </div>
       <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px;">
       <div class="chat-sidebar-head">Repository context</div>
@@ -2830,68 +2831,22 @@ function clearChat() {
   </div>`;
 }
 
-// Cache the system prompt once
-let _cachedSystemPrompt = null;
-function _chatSystemPrompt() {
-  if (_cachedSystemPrompt) return _cachedSystemPrompt;
-  const nbsSummary = Object.entries(CONTENT).map(([name, c]) =>
-    `${name}: ${c.tagline}. Hazards: ${c.hazards.slice(0,3).join(', ')}.`
-  ).join('\n');
-  _cachedSystemPrompt = `You are the NbS Repository Assistant for ESPON ReAdapt. Help users find Nature-based Solutions evidence for climate adaptation.
-
-NBS TYPES:\n${nbsSummary}
-
-STATS: ${ALL_RECS.length} records, 30 countries. Top hazard: Flooding (${ANA.haz_counts[0][1]}). Top NbS: Green Infrastructure (${ANA.nbs_counts[0][1]}).
-
-RULES: Ground answers in provided records. Cite as [Source: title]. Be concise and practical. Use bullet points. End with a next step.`;
-  return _cachedSystemPrompt;
+function _chatEscapeHtml(text) {
+  return String(text || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-function _chatFindRecords(query) {
-  const q = query.toLowerCase();
-  const synonyms = {
-    'heat':['heat','temperature','urban heat','cooling','thermal','heatwave'],
-    'building':['building','green roof','facade','wall','retrofit','roof'],
-    'flood':['flood','flooding','stormwater','drainage','runoff','inundation'],
-    'drought':['drought','water scarcity','dry','arid','irrigation'],
-    'coastal':['coastal','sea level','saltmarsh','dune','shoreline','tidal'],
-    'wildfire':['wildfire','fire','forest fire','combustion'],
-    'urban':['urban','city','cities','municipal','metropolitan'],
-    'rural':['rural','agricultural','farmland','landscape','peri-urban'],
-    'green':['green infrastructure','green roof','park','tree','vegetation'],
-    'wetland':['wetland','peatland','river','floodplain','blue infrastructure'],
-    'policy':['policy','directive','regulation','strategy','legislation'],
-    'funding':['funding','finance','grant','LIFE','Horizon','ERDF','CAP'],
-    'barrier':['barrier','challenge','obstacle','constraint','difficulty'],
-    'benefit':['benefit','co-benefit','ecosystem service','value','advantage'],
-    'case':['case study','example','pilot','demonstration','project'],
-  };
-  const words = q.split(/\s+/).filter(w => w.length > 2);
-  const terms = new Set(words);
-  words.forEach(w => {
-    Object.entries(synonyms).forEach(([key, vals]) => {
-      if (w.includes(key) || key.includes(w)) vals.forEach(v => terms.add(v.toLowerCase()));
-    });
-  });
-  const termArr = [...terms];
-
-  return ALL_RECS.map(r => {
-    let score = 0;
-    const searchText = [r.ti, r.le, r.ba, r.en, r.su, r.nb, r.hz, r.te, r.ty, r.co]
-      .filter(Boolean).join(' ').toLowerCase();
-    if (r.nb) {
-      const nbWords = r.nb.toLowerCase().split(/[\s\/\-]+/);
-      if (termArr.some(t => nbWords.some(nw => nw.includes(t) || t.includes(nw)))) score += 4;
-    }
-    if (r.hz) {
-      const hzWords = r.hz.toLowerCase().split(/[\s\/\&\-]+/);
-      if (termArr.some(t => hzWords.some(hw => hw.includes(t) || t.includes(hw)))) score += 3;
-    }
-    if (r.ty === 'Case Study') score += 1;
-    if (r.im === 'Implemented' || r.im === 'Evaluated') score += 1;
-    termArr.forEach(t => { if (t.length > 2 && searchText.includes(t)) score += 1; });
-    return { r, score };
-  }).filter(x => x.score >= 2).sort((a,b) => b.score - a.score).slice(0,6).map(x => x.r);
+function _chatFormatResponse(text) {
+  return _chatEscapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\[Source: (.+?)\]/g, '<em style="color:var(--forest-mid);font-size:10.5px">[Source: $1]</em>')
+    .replace(/\n\n/g, '</p><p style="margin-top:8px">')
+    .replace(/\n- /g, '<br>• ')
+    .replace(/\n(\d+)\. /g, '<br><strong>$1.</strong> ');
 }
 
 async function sendChatMessage() {
@@ -2903,12 +2858,12 @@ async function sendChatMessage() {
   chatBusy = true;
   input.value = ''; input.style.height = 'auto';
   document.getElementById('chat-send-btn').disabled = true;
-  document.getElementById('chat-status').textContent = 'Searching records\u2026';
+  document.getElementById('chat-status').textContent = 'Preparing grounded answer\u2026';
 
   const msgs = document.getElementById('chat-messages');
   msgs.innerHTML += `<div class="chat-msg user">
     <div class="chat-msg-avatar">You</div>
-    <div class="chat-msg-body"><div class="chat-msg-text">${text.replace(/</g,'&lt;')}</div></div>
+    <div class="chat-msg-body"><div class="chat-msg-text">${_chatEscapeHtml(text)}</div></div>
   </div>`;
 
   const typingId = 'typing-' + Date.now();
@@ -2918,24 +2873,7 @@ async function sendChatMessage() {
   </div>`;
   msgs.scrollTop = msgs.scrollHeight;
 
-  const relevantRecs = _chatFindRecords(text);
-  const recContext = relevantRecs.length
-    ? '\n\nRECORDS:\n' + relevantRecs.map((r,i) =>
-        `${i+1}. "${r.ti}" [${r.ty}, ${r.co?r.co.split(';')[0].trim():'Europe'}, ${r.yr||'unknown'}]. NbS:${r.nb||'general'} Hazard:${r.hz||'general'}.${r.le&&r.le.length>5?' Lesson:'+r.le.substring(0,120):''}${r.ba&&r.ba.length>5?' Barrier:'+r.ba.substring(0,80):''}`
-      ).join('\n')
-    : '\n\nNo closely matching records found in repository \u2014 answer from general NbS knowledge where possible.';
-
-  const messagesForAPI = [...chatHistory.slice(-4), { role: 'user', content: text + recContext }];
   chatHistory.push({ role: 'user', content: text });
-
-  const apiKey = sessionStorage.getItem('nbs_api_key') || '';
-  if (!apiKey) {
-    document.getElementById(typingId).remove();
-    msgs.innerHTML += `<div class="chat-msg assistant"><div class="chat-msg-avatar">\u{1F33F}</div>
-      <div class="chat-msg-body"><div class="chat-msg-text" style="color:var(--amber)">Please enter your Anthropic API key in the sidebar first.</div></div></div>`;
-    chatBusy = false; document.getElementById('chat-send-btn').disabled = false;
-    chatHistory.pop(); msgs.scrollTop = msgs.scrollHeight; return;
-  }
 
   const bubbleId = 'bubble-' + Date.now();
   document.getElementById(typingId).remove();
@@ -2947,93 +2885,53 @@ async function sendChatMessage() {
   </div>`;
   msgs.scrollTop = msgs.scrollHeight;
 
-  let reply = '';
-
-  function _fmtLive(t) {
-    return t
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\[Source: (.+?)\]/g, '<em style="color:var(--forest-mid);font-size:10.5px">[Source: $1]</em>')
-      .replace(/\n\n/g, '</p><p style="margin-top:8px">')
-      .replace(/\n- /g, '<br>\u2022 ')
-      .replace(/\n(\d+)\. /g, '<br><strong>$1.</strong> ');
-  }
-
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('/assistant/chat/', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-request-header': 'true'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 600,
-        stream: true,
-        system: _chatSystemPrompt(),
-        messages: messagesForAPI
+        query: text,
+        response_style: (document.getElementById('chat-response-style') || {}).value || 'standard',
+        history: chatHistory.slice(-6, -1)
       })
     });
 
     if (!response.ok) {
-      const errData = await response.json().catch(()=>({error:{message:'HTTP '+response.status}}));
-      throw new Error(errData.error?.message || 'HTTP ' + response.status);
+      const errData = await response.json().catch(()=>({error:'HTTP ' + response.status}));
+      throw new Error(errData.error || 'HTTP ' + response.status);
     }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    const textEl = document.getElementById('bt-' + bubbleId);
-    let streamDone = false;
-    let buffer = '';
-
-    while (!streamDone) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-      for (const line of lines) {
-        if (!line.startsWith('data: ')) continue;
-        const raw = line.slice(6).trim();
-        if (!raw) continue;
-        try {
-          const evt = JSON.parse(raw);
-          if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
-            reply += evt.delta.text;
-            if (textEl) {
-              textEl.innerHTML = '<p>' + _fmtLive(reply) + '</p><span class="chat-cursor">\u25ae</span>';
-              msgs.scrollTop = msgs.scrollHeight;
-            }
-          } else if (evt.type === 'message_stop') {
-            streamDone = true; break;
-          }
-        } catch(e) {}
-      }
-    }
-
+    const payload = await response.json();
+    const reply = payload.reply || '';
     chatHistory.push({ role: 'assistant', content: reply });
-    const sourcesHtml = relevantRecs.length ? `
+    const sources = Array.isArray(payload.sources) ? payload.sources : [];
+    const sourcesHtml = sources.length ? `
       <div class="chat-sources-label">Records searched</div>
       <div class="chat-sources">
-        ${relevantRecs.slice(0,4).map(r => `
-          <div class="chat-source-card" onclick="document.getElementById('f-nbs').value='${(r.nb||'').replace(/'/g,"\\'")}';applyFilters();showTab('search')">
-            <div class="src-title">${r.ti.substring(0,80)}${r.ti.length>80?'\u2026':''}</div>
-            <div class="src-meta">${r.ty} \u00b7 ${r.co?r.co.split(';')[0].trim():'\u2014'} \u00b7 ${r.yr||'\u2014'}${r.hz?' \u00b7 '+r.hz:''}</div>
+        ${sources.slice(0,4).map(r => `
+          <div class="chat-source-card">
+            <div class="src-title">${_chatEscapeHtml((r.title || '').substring(0,80))}${(r.title || '').length>80?'\u2026':''}</div>
+            <div class="src-meta">${_chatEscapeHtml(r.source_dataset || 'record')} \u00b7 ${_chatEscapeHtml(r.country_display || '\u2014')} \u00b7 ${_chatEscapeHtml(r.source_year || '\u2014')}</div>
+            ${r.source_url ? `<div style="margin-top:4px;font-size:10px;"><a href="${_chatEscapeHtml(r.source_url)}" target="_blank" rel="noopener noreferrer" style="color:var(--forest-mid);text-decoration:none;">Open source ↗</a></div>` : ''}
           </div>`).join('')}
       </div>` : '';
 
     const bubble = document.getElementById(bubbleId);
     if (bubble) bubble.querySelector('.chat-msg-body').innerHTML =
-      `<div class="chat-msg-text"><p>${_fmtLive(reply)}</p></div>${sourcesHtml}`;
+      `<div class="chat-msg-text"><p>${_chatFormatResponse(reply)}</p></div>${sourcesHtml}`;
 
     document.getElementById('chat-status').textContent =
-      relevantRecs.length ? `${relevantRecs.length} records matched` : 'General knowledge (no direct matches)';
+      payload.reason === 'out_of_scope'
+        ? 'Out-of-scope question'
+        : sources.length
+          ? `${sources.length} records matched`
+          : 'Answered without direct record matches';
 
   } catch(err) {
     const bubble = document.getElementById(bubbleId);
     if (bubble) bubble.querySelector('.chat-msg-body').innerHTML =
-      `<div class="chat-msg-text"><span style="color:var(--amber)">Error: ${err.message}</span></div>`;
+      `<div class="chat-msg-text"><span style="color:var(--amber)">Error: ${_chatEscapeHtml(err.message)}</span></div>`;
     document.getElementById('chat-status').textContent = '';
     chatHistory.pop();
   }
@@ -3930,9 +3828,6 @@ document.addEventListener("DOMContentLoaded",()=>{
 
   const homeBtn = document.getElementById("navbtn-landing");
   if(homeBtn) homeBtn.classList.add("active");
-  // Pre-fill API key if already stored this session
-  const storedKey = sessionStorage.getItem('nbs_api_key');
-  if(storedKey){ const ki=document.getElementById('chat-api-key'); if(ki) ki.value=storedKey; }
 });
 
 // ══════════════════════════════════════════════════════════════

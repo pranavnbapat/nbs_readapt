@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "apps.assistant",
     "apps.core",
     "apps.repository",
     "apps.search",
@@ -138,6 +139,28 @@ OPENSEARCH = {
     "index_neural": env("OPENSEARCH_INDEX_NEURAL", "nbs_repository_neural"),
     "ingest_pipeline": env("OPENSEARCH_INGEST_PIPELINE", "nbs_repository_ingest"),
     "hybrid_pipeline": env("OPENSEARCH_HYBRID_PIPELINE", "nbs_repository_hybrid"),
+}
+
+VLLM = {
+    "base_url": env("RUNPOD_VLLM_HOST", "").rstrip("/"),
+    "chat_completions_url": env("VLLM_CHAT_COMPLETIONS_URL", "").strip(),
+    "api_key": env("VLLM_API_KEY", ""),
+    "model": env("VLLM_MODEL", ""),
+    "max_model_len": int(env("VLLM_MAX_MODEL_LEN", "65535")),
+}
+
+ASSISTANT = {
+    "timeout_seconds": int(env("ASSISTANT_TIMEOUT_SECONDS", "120")),
+    "max_history_messages": int(env("ASSISTANT_MAX_HISTORY_MESSAGES", "6")),
+    "context_records": int(env("ASSISTANT_CONTEXT_RECORDS", "6")),
+    "context_field_chars": int(env("ASSISTANT_CONTEXT_FIELD_CHARS", "280")),
+    "context_record_chars": int(env("ASSISTANT_CONTEXT_RECORD_CHARS", "1200")),
+    "max_query_chars": int(env("ASSISTANT_MAX_QUERY_CHARS", "4000")),
+    "approx_chars_per_token": float(env("ASSISTANT_APPROX_CHARS_PER_TOKEN", "3.2")),
+    "max_input_tokens": int(env("ASSISTANT_MAX_INPUT_TOKENS", "0")),
+    "token_safety_margin": int(env("ASSISTANT_TOKEN_SAFETY_MARGIN", "0")),
+    "response_style_default": env("ASSISTANT_RESPONSE_STYLE_DEFAULT", "standard"),
+    "relevance_min_score": float(env("ASSISTANT_RELEVANCE_MIN_SCORE", "5.0")),
 }
 
 INITIAL_INPUT_DIR = BASE_DIR / env("INITIAL_INPUT_DIR", "initial_input")
