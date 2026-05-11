@@ -353,6 +353,8 @@ def _call_vllm(messages: list[dict[str, str]], system_prompt: str, response_styl
         method="POST",
         headers={
             "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0 (compatible; NbS-ReAdapt-Assistant/1.0; +https://nbs-readapt.example.com)",
             "Authorization": f"Bearer {settings.VLLM.get('api_key') or ''}",
         },
     )

@@ -3,325 +3,436 @@
 {% block title %}NbS Knowledge Repository — ReAdapt ESPON 2030{% endblock %}
 
 {% block extra_head %}
+<meta name="description" content="ESPON ReAdapt Nature-based Solutions Knowledge Repository">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <link rel="stylesheet" href="/static/css/home_reference.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 {% endblock %}
 
 {% block body %}
-<div class="ref-shell">
-  <header id="hdr">
-    <div>
-      <div class="sub">ESPON ReAdapt 2030</div>
-      <h1>NbS Knowledge Repository </h1>
+<div id="hdr"><div><div class="sub">ESPON ReAdapt</div><h1>NbS <em>Repository</em></h1></div></div>
+<div id="nav">
+  <button class="nav-tab" onclick="showTab('landing')" id="navbtn-landing">🏠 Home</button>
+  <button class="nav-tab" onclick="showSection('kb')" id="navtab-kb">📚 Knowledge Base</button>
+  <button class="nav-tab" onclick="showTab('analytics')" id="navbtn-analytics">📊 Analytics</button>
+  <button class="nav-tab" onclick="showTab('assistant')" id="navbtn-assistant">🌿 NbS Assistant</button>
+  <button class="nav-tab" onclick="showTab('about')" id="navbtn-about">ℹ About</button>
+</div>
+<div id="subnav-kb" class="subnav" style="display:none">
+  <button class="subnav-btn" onclick="showTab('search')" id="navbtn-search">Search &amp; Browse</button>
+  <button class="subnav-btn" onclick="showTab('map')" id="navbtn-map">Evidence Map</button>
+  <button class="subnav-btn" onclick="showTab('policy-explorer')" id="navbtn-policy-explorer">Policy Explorer</button>
+</div>
+<div id="content">
+  <div class="tab active" id="tab-landing">
+    <div id="landing">
+      <div id="landing-left">
+        <div style="background:var(--forest-pale);border-left:3px solid var(--forest);padding:12px 16px;margin-bottom:18px;border-radius:0 var(--r-sm) var(--r-sm) 0;">
+          <div style="font-size:10px;font-weight:700;color:var(--forest);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;font-family:var(--font-cond)">About this repository</div>
+          <p style="font-size:12px;color:var(--ink-2);line-height:1.65;margin:0;">
+            This knowledge repository is part of <strong>ESPON ReAdapt</strong> — an applied research project supporting climate adaptation planning across ESPON territories. It brings together curated records on Nature-based Solutions (NbS) covering scientific papers, case studies, EU projects and policies from across Europe. Use it to explore evidence, find comparable cases, build an investment case, and navigate EU funding and policy alignment for NbS implementation.
+          </p>
+        </div>
+        <div class="landing-title">Explore NbS evidence across Europe</div>
+        <div class="landing-sub">Search the knowledge base or use the filters below to explore where Nature-based Solutions have been studied across Europe.</div>
+        <div style="position:relative;margin-bottom:14px">
+          <input id="landing-search" type="text" placeholder="🔍  Search by topic, country, city, NbS type…"
+            oninput="landingSearch(this.value)"
+            style="width:100%;box-sizing:border-box;padding:9px 36px 9px 12px;border:1.5px solid #CBD5E1;border-radius:8px;font-size:12px;font-family:inherit;outline:none;background:#fff"
+            onfocus="this.style.borderColor='#2563EB'" onblur="this.style.borderColor='#CBD5E1'">
+          <span onclick="clearLandingSearch()" id="landing-search-clear" style="display:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:#94A3B8;font-size:10px;line-height:1">✕</span>
+        </div>
+        <div id="landing-search-results" style="display:none;max-height:260px;overflow-y:auto;border:1.5px solid #BFDBFE;border-radius:8px;background:#fff;margin-bottom:12px;box-shadow:0 4px 16px rgba(37,99,235,0.10)"></div>
+        <div id="selection-summary" style="display:none;margin-bottom:14px;padding:9px 12px;background:#DBEAFE;border:1.5px solid #93C5FD;border-radius:8px;font-size:10px;color:#1E3A8A;line-height:1.6">
+          <strong>Your selection:</strong>
+          <span id="sel-haz-lbl" style="background:#2563EB;color:#fff;padding:1px 7px;border-radius:10px;margin:0 3px;font-size:11px;font-weight:700"></span>
+          <span id="sel-ter-lbl" style="background:#0891B2;color:#fff;padding:1px 7px;border-radius:10px;margin:0 3px;font-size:11px;font-weight:700;display:none"></span>
+          <span id="sel-sca-lbl" style="background:#7C3AED;color:#fff;padding:1px 7px;border-radius:10px;margin:0 3px;font-size:11px;font-weight:700;display:none"></span>
+        </div>
+        <div class="hazard-label">Step 1 — Climate hazard? <span style="color:#64748B;font-weight:400;font-size:10px">(select one or more)</span></div>
+        <div class="hazard-grid" id="hazard-grid"></div>
+        <div class="territory-label">Step 2 — Territory type? <span style="color:#64748B;font-weight:400;font-size:10px">(select one or more)</span></div>
+        <div class="ter-pills" id="ter-pills"></div>
+        <div class="scale-label">Step 3 — Governance scale? <span style="color:#64748B;font-weight:400;font-size:10px">(select one or more)</span></div>
+        <div class="ter-pills" id="scale-pills"></div>
+        <div id="map-result-msg" style="display:none;margin-top:4px;padding:10px 12px;background:#F0FDF4;border-radius:8px;border:1px solid #BBF7D0;font-size:10px;color:#065F46;line-height:1.6">
+          <div id="map-result-text"></div>
+          <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+            <button onclick="searchFromLanding()" style="font-size:11px;padding:4px 10px;border-radius:6px;background:#D1FAE5;color:#065F46;border:1px solid #6EE7B7;cursor:pointer;font-family:inherit;font-weight:600">📄 Browse these records →</button>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding:9px 12px;background:#F8FAFC;border-radius:8px;border:1px solid #E2E8F0">
+          <div style="font-size:11px;font-weight:700;color:#64748B;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px">Explore all evidence</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <button onclick="showTab('search')" style="font-size:11px;padding:3px 8px;border-radius:6px;background:#DBEAFE;color:#1E3A8A;border:1px solid #93C5FD;cursor:pointer;font-family:inherit">📄 All 1557 records</button>
+            <button onclick="showTab('analytics')" style="font-size:11px;padding:3px 8px;border-radius:6px;background:#EDE9FE;color:#4C1D95;border:1px solid #C4B5FD;cursor:pointer;font-family:inherit">📊 Analytics</button>
+            <button onclick="initMapAndShow()" style="font-size:11px;padding:3px 8px;border-radius:6px;background:#FEF3C7;color:#92400E;border:1px solid #FCD34D;cursor:pointer;font-family:inherit">🗺️ Full map</button>
+          </div>
+        </div>
+      </div>
+      <div id="landing-right">
+        <div id="landing-map"></div>
+        <div class="map-tip" id="landing-map-tip">💡 Click a hazard to filter map locations · <span id="landing-map-reset" onclick="resetLandingMap()" style="cursor:pointer;text-decoration:underline;display:none">Reset map</span></div>
+      </div>
     </div>
-    <div class="hdr-divider"></div>
-    <div class="hdr-stats">
-      <div class="hdr-stat">{{ total_records }} records in the current repository</div>
-      <div class="hdr-stat">{{ dataset_counts.papers|default:0 }} papers · {{ dataset_counts.network_projects|default:0 }} network projects</div>
-      <div class="hdr-stat">{{ dataset_counts.eu_projects|default:0 }} EU projects · {{ dataset_counts.policies|default:0 }} policies</div>
-    </div>
-    <a class="hdr-badge" href="/legacy/">Open legacy view</a>
-  </header>
-
-  <nav id="nav">
-    <button class="nav-tab tablink active" data-tab="home">🏠 Home</button>
-    <button class="nav-tab tablink" data-tab="search">📚 Knowledge Base</button>
-    <button class="nav-tab tablink" data-tab="analytics">📊 Analytics</button>
-    <button class="nav-tab tablink" data-tab="map">🗺️ Full Map</button>
-    <a class="nav-tab nav-link" href="/legacy/">Legacy</a>
-  </nav>
-
-  <div class="subnav">
-    <button id="run-search" class="subnav-btn subnav-highlight" type="button">Refresh results</button>
-    <button id="reset-filters" class="subnav-btn" type="button">Reset filters</button>
-    <div class="subnav-sep"></div>
-    <span class="subnav-copy">Knowledge Base</span>
-    <div class="subnav-sep"></div>
-    <a class="subnav-link" href="/repository/overview/">Repository Overview</a>
-    <a class="subnav-link" href="/repository/qa/">QA Snapshot</a>
   </div>
 
-  <main id="content">
-    <section class="tab tabpanel active" data-panel="home">
-      <div id="landing">
-        <aside id="landing-left">
-          <div class="intro-card">
-            <div class="hazard-label">About This Repository</div>
-            <p>
-              This knowledge repository is part of <strong>ESPON ReAdapt</strong> and brings together curated records on
-              Nature-based Solutions across scientific papers, network projects, EU projects, and policies.
-            </p>
+  <div class="tab" id="tab-about">
+    <div style="height:100%;display:flex;flex-direction:column;justify-content:center;max-width:820px;margin:0 auto;padding:24px 40px;box-sizing:border-box">
+      <div style="margin-bottom:20px">
+        <div style="font-size:22px;font-weight:700;color:var(--forest);margin-bottom:10px;font-family:var(--font-cond);letter-spacing:-0.01em">ESPON ReAdapt</div>
+        <p style="font-size:13px;color:var(--ink-2);line-height:1.75;margin:0 0 8px">Europe's climate adaptation community has a knowledge problem — not a shortage of evidence, but a fragmentation of it. Peer-reviewed research, EU-funded project reports and national policy documents rarely reach the practitioners and planners who need them most.</p>
+        <p style="font-size:13px;color:var(--ink-2);line-height:1.75;margin:0">The ReAdapt NbS Knowledge Repository addresses this by providing a single, searchable access point to curated evidence on Nature-based Solutions from across Europe — structured to support decision-making across research, planning and implementation.</p>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:16px">
+        <div style="font-size:10px;font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:2px;margin-bottom:14px">What you can do here</div>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1;display:flex;gap:14px;align-items:flex-start;padding:14px 16px;background:var(--forest-pale);border-radius:8px;border-left:4px solid var(--forest)">
+            <span style="font-size:22px;flex-shrink:0;line-height:1">🏠</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--ink-1);margin-bottom:4px">Start on the Home page.</div>
+              <p style="font-size:12px;color:var(--ink-2);line-height:1.6;margin:0">Pick your hazard, territory type and scale — the map updates and you can browse straight to matching records.</p>
+            </div>
           </div>
-
-          <div class="landing-title">Explore NbS evidence across Europe</div>
-          <div class="landing-sub">
-            Search the knowledge base or use the quick filters below to explore where Nature-based Solutions have been
-            studied across Europe.
+          <div style="flex:1;display:flex;gap:14px;align-items:flex-start;padding:14px 16px;background:var(--forest-pale);border-radius:8px;border-left:4px solid var(--forest)">
+            <span style="font-size:22px;flex-shrink:0;line-height:1">📚</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--ink-1);margin-bottom:4px">Explore the Knowledge Base.</div>
+              <p style="font-size:12px;color:var(--ink-2);line-height:1.6;margin:0">Search and filter 1,557 records by NbS type, hazard and country. The Policy Explorer covers 769 EU and national policies.</p>
+            </div>
           </div>
+          <div style="flex:1;display:flex;gap:14px;align-items:flex-start;padding:14px 16px;background:var(--forest-pale);border-radius:8px;border-left:4px solid var(--forest)">
+            <span style="font-size:22px;flex-shrink:0;line-height:1">🌿</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--ink-1);margin-bottom:4px">Ask the NbS Assistant.</div>
+              <p style="font-size:12px;color:var(--ink-2);line-height:1.6;margin:0">The AI assistant answers questions about evidence, funding and policy — grounded in the repository records.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:14px">
+        <p style="font-size:12px;color:var(--ink-3);margin:0">Developed by: Lead Partner <strong style="color:var(--ink-2)">WENR</strong> &nbsp;·&nbsp; Partner <strong style="color:var(--ink-2)">Climate-KIC</strong> &nbsp;·&nbsp; Funded by <strong style="color:var(--ink-2)">ESPON EGTC</strong></p>
+      </div>
+    </div>
+  </div>
 
-          <label class="landing-field">
-            <span>Quick Search</span>
-            <input id="search-input" type="search" placeholder="Search by topic, country, city, NbS type...">
+  <div class="tab" id="tab-search">
+    <div id="search-wrap">
+      <button id="filter-toggle-btn" onclick="toggleFilterPanel()" style="display:none">⚙ Filters</button>
+      <div id="filters">
+        <div class="fl-head" style="display:flex;align-items:center;justify-content:space-between">
+          <span>🔧 Filters</span>
+          <button id="filter-close-btn" onclick="toggleFilterPanel()" style="display:none;background:transparent;border:none;cursor:pointer;font-size:10px;color:var(--ink-3);padding:0;line-height:1">✕</button>
+        </div>
+        <div class="prac-toggle">
+          <label class="prac-switch">
+            <input type="checkbox" id="prac-toggle" onchange="applyFilters()">
+            <span class="prac-slider"></span>
           </label>
-
-          <div class="selection-summary">
-            <div class="selection-summary-head">
-              <strong>Current Search State</strong>
-              <span class="selection-summary-status">Live filters</span>
-            </div>
-            <div id="active-filters" class="active-filters"></div>
+          <span class="prac-label">Practitioner view</span>
+        </div>
+        <input id="search-input" placeholder="Search titles, countries, lessons…" oninput="applyFilters()">
+        <div style="margin-bottom:7px">
+          <label style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#64748B;display:block;margin-bottom:3px">Source Type</label>
+          <div class="type-pills">
+            <span class="type-pill on" data-type="All" onclick="setType(this)">All</span>
+            <span class="type-pill" data-type="Scientific Paper" onclick="setType(this)">Papers</span>
+            <span class="type-pill" data-type="Case Study" onclick="setType(this)">Cases</span>
+            <span class="type-pill" data-type="EU Project" onclick="setType(this)">Projects</span>
+            <span class="type-pill" data-type="EU Policy" onclick="setType(this)">Policies</span>
           </div>
-
-          <div class="hazard-label">Step 1 - Climate Challenge? <span class="label-note">(select one or more)</span></div>
-          <div id="home-hazard-grid" class="hazard-grid"></div>
-
-          <div class="territory-label">Step 2 - Territory Type? <span class="label-note">(select one or more)</span></div>
-          <div id="home-geography-pills" class="ter-pills"></div>
-
-          <div class="scale-label">Step 3 - Evidence Source? <span class="label-note">(select one or more)</span></div>
-          <div id="home-dataset-pills" class="ter-pills"></div>
-
-          <div class="quick-actions">
-            <button class="quick-link" type="button" data-tab-target="search">Browse these records</button>
-            <button class="quick-link" type="button" data-tab-target="analytics">Analytics</button>
-            <button class="quick-link" type="button" data-tab-target="map">Full map</button>
-          </div>
-
-          <div class="explore-card">
-            <div class="mini-kicker">Explore All Evidence</div>
-            <div class="explore-links">
-              <button class="explore-link" type="button" data-tab-target="search">All {{ total_records }} records</button>
-              <button class="explore-link" type="button" data-tab-target="analytics">Analytics</button>
-              <button class="explore-link" type="button" data-tab-target="map">Full Map</button>
-            </div>
-          </div>
-
-          <details class="advanced-filters">
-            <summary>Advanced Filters</summary>
-            <div class="filter-callout">
-              <strong>Detailed filters live here.</strong>
-              These controls are also reset by <em>Reset filters</em> in the green bar above.
-            </div>
-            <div class="landing-grid">
-              <label class="landing-field">
-                <span>Source Type</span>
-                <select id="filter-source-dataset" multiple size="4"></select>
-              </label>
-              <label class="landing-field">
-                <span>Country</span>
-                <select id="filter-country" multiple size="5"></select>
-              </label>
-              <label class="landing-field">
-                <span>Geography Type</span>
-                <select id="filter-geography-type" multiple size="5"></select>
-              </label>
-              <label class="landing-field">
-                <span>Hazard</span>
-                <select id="filter-hazard" multiple size="5"></select>
-              </label>
-              <label class="landing-field">
-                <span>NbS Type</span>
-                <select id="filter-nbs-type" multiple size="5"></select>
-              </label>
-              <label class="landing-field">
-                <span>Implementation Stage</span>
-                <select id="filter-implementation-stage" multiple size="4"></select>
-              </label>
-              <label class="landing-field">
-                <span>Policy Level</span>
-                <select id="filter-policy-level" multiple size="4"></select>
-              </label>
-            </div>
-            <div class="landing-years">
-              <label class="landing-field">
-                <span>Year From</span>
-                <input id="filter-year-gte" type="number" min="1900" max="2100">
-              </label>
-              <label class="landing-field">
-                <span>Year To</span>
-                <input id="filter-year-lte" type="number" min="1900" max="2100">
-              </label>
-            </div>
-          </details>
-
-          <div class="landing-mini">
-            <div class="panel-mini-head">
-              <strong>Shortlist</strong>
-              <button id="clear-shortlist" class="landing-tip" type="button">Clear</button>
-            </div>
-            <p id="shortlist-meta" class="mini-subtle">No records shortlisted yet.</p>
-            <div id="shortlist-items" class="shortlist-items ref-shortlist"></div>
-          </div>
-        </aside>
-
-        <section id="landing-right">
-          <div id="landing-map"></div>
-          <div class="map-overlay">
-            <div class="map-overlay-card">
-              <div class="mini-kicker">Repository Coverage</div>
-              <strong>{{ total_records }} records · {{ geocoded_records }} mapped</strong>
-              <p>The home map uses the current live filter state and colors points by hazard theme.</p>
-            </div>
-            <div id="landing-map-legend" class="landing-map-legend"></div>
-          </div>
-          <div class="map-tip" id="landing-map-tip">
-            Live evidence map from the current search state.
-            <span id="landing-map-count"></span>
-            <span class="map-tip-link" data-tab-target="search">Open matching records</span>
-          </div>
-        </section>
+        </div>
+        <div class="filter-group"><label>NbS Type</label><select id="f-nbs" onchange="applyFilters()"><option>All</option></select></div>
+        <div class="filter-group"><label>Climate Hazard</label><select id="f-haz" onchange="applyFilters()"><option>All</option></select></div>
+        <div class="filter-group"><label>Territory</label><select id="f-ter" onchange="applyFilters()"><option>All</option></select></div>
+        <div class="filter-group"><label>Spatial Scale</label><select id="f-sca" onchange="applyFilters()"><option>All</option></select></div>
+        <div class="filter-group"><label>Implementation Stage</label><select id="f-imp" onchange="applyFilters()"><option>All</option></select></div>
+        <div class="filter-group"><label>Community Engagement</label><select id="f-com" onchange="applyFilters()"><option>All</option></select></div>
+        <div class="filter-group">
+          <label>Funding Programme</label>
+          <select id="f-fund" onchange="applyFilters()">
+            <option value="All">All</option>
+            <option value="ERDF">ERDF</option>
+            <option value="LIFE">LIFE</option>
+            <option value="Horizon">Horizon / H2020</option>
+            <option value="CAP">CAP / EAFRD</option>
+            <option value="INTERREG">INTERREG</option>
+            <option value="Cohesion">Cohesion Fund</option>
+          </select>
+        </div>
+        <div class="filter-group"><label>Country</label><select id="f-cou" onchange="applyFilters()"><option>All</option></select></div>
+        <div class="filter-group"><label>Year From</label><select id="f-yr1" onchange="applyFilters()"><option>All</option></select></div>
+        <div class="filter-group"><label>Year To</label><select id="f-yr2" onchange="applyFilters()"><option>All</option></select></div>
+        <div class="filter-info">Showing <strong id="shown-count">—</strong> of <strong>1557</strong> records</div>
+        <button class="reset-btn" onclick="resetFilters()">↺ Reset all filters</button>
       </div>
-    </section>
-
-    <section class="tab tabpanel" data-panel="search">
-      <div class="ref-panel search-panel">
-        <div class="results-stage-head">
-          <div>
-            <div class="hazard-label">Knowledge Base</div>
-            <h3>Search & Browse</h3>
-          </div>
-          <div class="results-actions">
-            <button class="quick-link" type="button" data-tab-target="home">Back to Home Explorer</button>
-            <a class="landing-tip" href="/legacy/">Open legacy UI</a>
-          </div>
+      <div id="filter-resize" title="Drag to resize panel"></div>
+      <div id="results">
+        <div class="res-header">
+          <span id="results-count" class="res-count"></span>
+          <span style="font-size:11px;color:var(--ink-3)" id="prac-hint">Click a card to expand · Practitioner view auto-expands lessons</span>
         </div>
-        <div class="results-intro">
-          <span id="results-meta">Loading repository records...</span>
-          <span class="results-hint">Home holds the filters. This tab is the detailed result workbench for the current filter state.</span>
-        </div>
-        <div id="results-list" class="results-list ref-results"></div>
+        <div id="results-list"></div>
       </div>
-    </section>
-
-    <section class="tab tabpanel" data-panel="map">
-      <div class="ref-panel">
-        <div class="results-stage-head">
-          <div>
-            <div class="hazard-label">Map View</div>
-            <h3>Evidence Map</h3>
-          </div>
-          <p id="map-meta" class="mini-subtle">No map data loaded yet.</p>
-        </div>
-        <div class="map-layout ref-map-layout">
-          <div id="map-canvas"></div>
-          <div class="map-sidebar ref-map-sidebar">
-            <div class="landing-mini">
-              <strong>Mapped Records</strong>
-              <div id="map-list" class="stack-list compact-list"></div>
-            </div>
-            <div class="landing-mini">
-              <strong>Map Logic</strong>
-              <p class="mini-subtle">The map uses the same live search and filter state as the home view.</p>
-            </div>
-            <div class="landing-mini">
-              <strong>Geography Coverage</strong>
-              <p class="mini-subtle">Records can be country, multi-country, supranational, global, or transnational-region scoped.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="tab tabpanel" data-panel="analytics">
-      <div class="ref-panel">
-        <div class="analytics-intro">
-          <div class="analytics-intro-copy">
-            <div class="hazard-label">Evidence Analytics</div>
-            <h3>Explore the evidence landscape across dataset type, implementation stage, hazards, and time.</h3>
-            <p class="mini-subtle">
-              This section borrows the editorial feel of the original prototype, but the numbers come from the normalized repository database and live search facets.
-            </p>
-          </div>
-          <div class="analytics-key-finding">
-            <strong>Repository signal</strong>
-            Flooding and green infrastructure remain among the strongest visible themes, reflecting how the current imported evidence base is distributed.
-          </div>
-        </div>
-        <div class="results-stage-head">
-          <div>
-            <div class="hazard-label">Repository Analytics</div>
-            <h3>Signals from the normalized repository</h3>
-          </div>
-        </div>
-        <div class="analytics-grid">
-          <article class="mini-card analytics-wide">
-            <h3>Repository Context</h3>
-            <p class="mini-subtle">
-              These summaries are generated from the normalized repository database and live search facets, not from hard-coded arrays in a static HTML file.
-            </p>
-          </article>
-          <article class="mini-card">
-            <h3>Total Records</h3>
-            <div class="metric-big">{{ total_records }}</div>
-            <p class="mini-subtle">All searchable records currently loaded into PostgreSQL and OpenSearch.</p>
-          </article>
-          <article class="mini-card">
-            <h3>Mapped Records</h3>
-            <div class="metric-big">{{ geocoded_records }}</div>
-            <p class="mini-subtle">Records with usable coordinates for the live evidence map.</p>
-          </article>
-          <article class="mini-card">
-            <h3>By Dataset</h3>
-            <div id="analytics-datasets" class="stack-list"></div>
-          </article>
-          <article class="mini-card">
-            <h3>Implementation Stage</h3>
-            <div id="analytics-implementation" class="stack-list"></div>
-          </article>
-          <article class="mini-card analytics-wide">
-            <h3>Records by Year</h3>
-            <p class="mini-subtle analytics-card-subtle">Publication and project years from the normalized repository records.</p>
-            <div id="analytics-years" class="year-bars"></div>
-          </article>
-          <article class="mini-card">
-            <h3>Top Hazards</h3>
-            <div id="analytics-hazards" class="stack-list"></div>
-          </article>
-          <article class="mini-card">
-            <h3>Top NbS Types</h3>
-            <div id="analytics-nbs" class="stack-list"></div>
-          </article>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <footer id="footer">
-    <div class="fl">Live Django app · PostgreSQL source of truth · OpenSearch BM25 index</div>
-    <div class="fr">
-      <a href="/repository/overview/">Repository overview</a>
-      <a href="/repository/qa/">QA report</a>
-      <a href="/legacy/">Legacy view</a>
     </div>
-  </footer>
-</div>
+  </div>
 
-<div id="record-modal" class="record-modal">
-  <div class="record-dialog">
-    <div class="panel-head">
-      <div>
-        <p id="modal-type" class="eyebrow">Record</p>
-        <h2 id="modal-title">Record detail</h2>
+  <div class="tab" id="tab-analytics">
+    <div id="analytics-wrap">
+      <div class="ana-title">📊 Evidence Analytics</div>
+      <div class="ana-intro">
+        <div class="ana-intro-text">
+          <p>Explore the evidence landscape across NbS types, climate hazards, countries and time. Use the choropleth maps to identify where evidence is concentrated — and where gaps remain. Click any country for a full evidence profile.</p>
+        </div>
+        <div class="ana-key-finding">
+          <strong>Flooding leads</strong>
+          Most-documented hazard across all 30 countries — reflecting strong EU investment in flood NbS through LIFE and Horizon programmes.
+        </div>
       </div>
-      <button id="close-modal" class="ghost-btn" type="button">Close</button>
+      <div class="metric-row" id="metric-row"></div>
+      <div class="ana-grid2">
+        <div class="ana-card" style="padding:12px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;">
+            <div class="ana-card-title" style="margin-bottom:0">📌 Climate Hazard by Country</div>
+            <span style="font-size:12px;color:var(--ink-3);font-family:var(--font-cond)">Opacity = evidence volume · Click for full profile</span>
+          </div>
+          <div id="haz-filter-pills" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px;"></div>
+          <div style="display:grid;grid-template-columns:1fr 170px;gap:10px;align-items:start">
+            <div>
+              <div id="haz-map" style="height:260px;border-radius:3px;overflow:hidden;border:1px solid var(--border-light)"></div>
+              <div id="haz-map-legend" style="display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;"></div>
+            </div>
+            <div>
+              <div style="font-family:var(--font-cond);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;" id="haz-rank-label">Top countries</div>
+              <div id="haz-ranking" style="max-height:280px;overflow-y:auto;"></div>
+            </div>
+          </div>
+        </div>
+        <div class="ana-card" style="padding:12px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;">
+            <div class="ana-card-title" style="margin-bottom:0">🌿 NbS Type by Country</div>
+            <span style="font-size:12px;color:var(--ink-3);font-family:var(--font-cond)">Opacity = evidence volume · Click for full profile</span>
+          </div>
+          <div id="nbs-filter-pills" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px;"></div>
+          <div style="display:grid;grid-template-columns:1fr 170px;gap:10px;align-items:start">
+            <div>
+              <div id="nbs-map" style="height:260px;border-radius:3px;overflow:hidden;border:1px solid var(--border-light)"></div>
+              <div id="nbs-map-legend" style="display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:8px;"></div>
+            </div>
+            <div>
+              <div style="font-family:var(--font-cond);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;" id="nbs-rank-label">Top countries</div>
+              <div id="nbs-ranking" style="max-height:280px;overflow-y:auto;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="ana-grid2">
+        <div class="ana-card">
+          <div class="ana-card-title">🔑 Key Insights</div>
+          <div id="insight-boxes"></div>
+        </div>
+        <div class="ana-card">
+          <div class="ana-card-title">🔄 Implementation Stage</div>
+          <div id="impl-bars"></div>
+        </div>
+      </div>
+      <div class="ana-grid2">
+        <div class="ana-card">
+          <div class="ana-card-title">🏙️ Territory Type</div>
+          <div id="ter-bars"></div>
+        </div>
+        <div class="ana-card">
+          <div class="ana-card-title">📅 Publications &amp; Projects by Year</div>
+          <div id="year-chart" style="height:80px"></div>
+        </div>
+      </div>
+      <div class="ana-card" style="margin-bottom:12px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:12px;flex-wrap:wrap;">
+          <div>
+            <div class="ana-card-title" style="margin-bottom:3px;">🔬 NbS Type × Climate Hazard — Evidence Density Matrix</div>
+            <div style="font-size:10px;color:var(--ink-3);font-weight:300;">Live counts from all 1,557 records. Click any cell to browse those records in Search.</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0;">
+            <span style="font-family:var(--font-cond);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);">Show as</span>
+            <button id="mat-mode-count" onclick="setMatrixMode('count')" style="font-size:11px;padding:4px 10px;border-radius:2px;cursor:pointer;font-family:var(--font-cond);font-weight:600;letter-spacing:.03em;border:1px solid var(--forest);background:var(--forest);color:#fff;transition:all .12s;">Count</button>
+            <button id="mat-mode-pct" onclick="setMatrixMode('pct')" style="font-size:11px;padding:4px 10px;border-radius:2px;cursor:pointer;font-family:var(--font-cond);font-weight:600;letter-spacing:.03em;border:1px solid var(--border);background:transparent;color:var(--ink-2);transition:all .12s;">% share</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto"><table id="matrix-tbl" style="width:100%;border-collapse:collapse;font-size:10px;"></table></div>
+        <div id="matrix-legend" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;align-items:center;padding-top:10px;border-top:1px solid var(--border);"></div>
+      </div>
+      <div class="ana-card" style="margin-bottom:12px">
+        <div class="ana-card-title">🇪🇺 ESPON Member State Analysis</div>
+        <div style="font-size:10px;color:#64748B;margin-bottom:10px">Select a country to see its individual evidence profile across all knowledge domains.</div>
+        <select class="country-sel" id="country-sel" onchange="updateCountryStats()">
+          <option value="">— Select an ESPON member state —</option>
+        </select>
+        <div id="cstat-panel"></div>
+        <div style="margin-top:12px">
+          <div class="ana-card-title" style="margin-bottom:8px">📊 Top 15 Countries by Record Count</div>
+          <div id="country-bars"></div>
+        </div>
+      </div>
     </div>
-    <div id="modal-meta" class="result-meta"></div>
-    <div id="modal-summary" class="detail-summary"></div>
-    <div id="modal-sections" class="detail-grid"></div>
+  </div>
+
+  <div class="tab" id="tab-map">
+    <div id="map-wrap">
+      <div id="map-sidebar">
+        <div style="font-weight:700;color:#1E3A8A;font-size:12px;margin-bottom:6px">🗺️ Evidence Map</div>
+        <div style="font-size:11px;color:#64748B;margin-bottom:10px;line-height:1.5"><span id="map-count">—</span> geolocated records. Click any pin for details.</div>
+        <label style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#64748B;display:block;margin-bottom:4px">NbS Type</label>
+        <div id="map-nbs-pills" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px"></div>
+        <label style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#64748B;display:block;margin-bottom:4px">Climate Hazard</label>
+        <select id="map-haz" onchange="filterMap()" style="width:100%;border:1px solid #CBD5E1;border-radius:5px;padding:4px 6px;font-size:11px;margin-bottom:8px;font-family:inherit">
+          <option>All hazards</option>
+        </select>
+        <div style="font-family:var(--font-cond);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;margin-top:8px;">Overlays</div>
+        <button id="choro-toggle-btn" onclick="toggleChoropleth(this)" style="width:100%;padding:6px;font-family:var(--font-cond);font-size:11px;font-weight:600;letter-spacing:.04em;border-radius:2px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--ink-2);margin-bottom:10px;transition:all .15s;">Country Coverage</button>
+        <label style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#64748B;display:block;margin-bottom:4px">Domain</label>
+        <div id="map-type-pills" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:10px"></div>
+        <div style="font-family:var(--font-cond);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;">Color pins by</div>
+        <div style="display:flex;gap:4px;margin-bottom:10px;">
+          <button id="map-color-nbs" onclick="setMapColorMode('nbs')" style="flex:1;padding:5px;font-family:var(--font-cond);font-size:11px;font-weight:600;letter-spacing:.03em;border-radius:2px;cursor:pointer;border:1px solid var(--forest);background:var(--forest);color:#fff;transition:all .12s;">NbS Type</button>
+          <button id="map-color-haz" onclick="setMapColorMode('haz')" style="flex:1;padding:5px;font-family:var(--font-cond);font-size:11px;font-weight:600;letter-spacing:.03em;border-radius:2px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--ink-2);transition:all .12s;">Hazard</button>
+        </div>
+        <div style="font-family:var(--font-cond);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-3);margin-bottom:5px;" id="map-legend-title">Legend — NbS Type</div>
+        <div id="map-legend"></div>
+        <div id="map-popup-side" style="display:none;margin-top:10px;background:#EFF6FF;border:1.5px solid #2563EB;border-radius:8px;padding:9px"></div>
+      </div>
+      <div id="map-container"><div id="leaflet-map"></div></div>
+    </div>
+  </div>
+
+  <div class="tab" id="tab-policy-explorer">
+    <div style="display:flex;height:100%;overflow:hidden;">
+      <div id="pol-exp-sidebar" style="width:220px;background:var(--paper);border-right:1px solid var(--border);padding:14px;overflow-y:auto;flex-shrink:0;">
+        <div class="fl-head">Policy Filters</div>
+        <div class="filter-group">
+          <label>Country</label>
+          <select id="pex-country" onchange="filterPolicyExplorer()"><option value="">All countries</option></select>
+        </div>
+        <div class="filter-group">
+          <label>Legal Bindingness</label>
+          <select id="pex-bind" onchange="filterPolicyExplorer()">
+            <option value="">All</option>
+            <option>Binding</option>
+            <option>Non-binding</option>
+            <option>Strategy</option>
+            <option>Policy Framework</option>
+            <option>Regulatory</option>
+            <option>Action Plan</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>NbS Type</label>
+          <select id="pex-nbs" onchange="filterPolicyExplorer()"><option value="">All</option></select>
+        </div>
+        <div class="filter-group">
+          <label>Climate Hazard</label>
+          <select id="pex-haz" onchange="filterPolicyExplorer()"><option value="">All</option></select>
+        </div>
+        <div class="filter-group">
+          <label>Search</label>
+          <input id="pex-search" type="text" placeholder="Title, authority…" oninput="filterPolicyExplorer()"
+            style="width:100%;border:none;border-bottom:1.5px solid var(--border);padding:5px 2px;font-size:10px;font-family:var(--font-body);background:transparent;outline:none;">
+        </div>
+        <div class="filter-info" style="margin-top:10px;">Showing <strong id="pex-count">—</strong> of 769 policies</div>
+        <button class="reset-btn" onclick="resetPolicyExplorer()">↺ Reset</button>
+      </div>
+      <div id="pol-exp-results" style="flex:1;overflow-y:auto;padding:14px 16px;">
+        <div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-family:var(--font-display);font-size:12px;font-weight:500;color:var(--forest);">Policy Explorer <span style="font-size:12px;color:var(--ink-3);font-family:var(--font-body);font-weight:300;">— 769 EU &amp; national NbS policies</span></div>
+          <button class="export-btn" onclick="exportPoliciesCSV()">↓ Export CSV</button>
+        </div>
+        <div id="pex-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab" id="tab-gaps">
+    <div style="padding:20px;overflow-y:auto;flex:1;">
+      <div style="font-family:var(--font-display);font-size:13px;font-weight:500;color:var(--forest);margin-bottom:3px;">Research Gaps</div>
+      <div style="font-size:10px;color:var(--ink-3);margin-bottom:18px;font-weight:300;line-height:1.6;">Evidence density across NbS types and climate hazards — computed live from all 1,557 records. Red = evidence gap, green = strong base. Click any cell to browse those records.</div>
+      <div class="ana-card" style="margin-bottom:16px;">
+        <div class="ana-card-title">NbS Type × Climate Hazard — Live Evidence Density</div>
+        <div style="overflow-x:auto;"><table class="gaps-tbl" id="real-gaps-tbl"></table></div>
+        <div class="gap-legend" id="gap-legend"></div>
+      </div>
+      <div class="ana-card">
+        <div class="ana-card-title">Priority Research Gaps — Combinations under 3 records</div>
+        <div id="gap-priority-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab" id="tab-assistant">
+    <div style="display:flex;height:100%;flex-direction:column;max-width:860px;margin:0 auto;width:100%;padding:0 24px">
+      <div style="padding:24px 0 16px;border-bottom:1px solid var(--border);flex-shrink:0">
+        <div style="font-family:var(--font-display);font-size:16px;font-weight:500;color:var(--forest);margin-bottom:4px">🌿 NbS Assistant</div>
+        <div style="font-size:12px;color:var(--ink-3);line-height:1.6">Ask questions about Nature-based Solutions evidence, funding, policy or comparable cases from the repository. The assistant draws on 1,557 curated records across Europe.</div>
+      </div>
+      <div id="assistant-messages" style="flex:1;overflow-y:auto;padding:20px 0;display:flex;flex-direction:column;gap:14px">
+        <div class="chat-msg assistant">
+          <div class="chat-msg-avatar">🌿</div>
+          <div class="chat-msg-body"><div class="chat-msg-text">Hello! I can help you find NbS evidence, explore funding options, understand policy alignment or identify comparable cases from across Europe. What would you like to know?</div></div>
+        </div>
+      </div>
+      <div style="padding:14px 0 20px;flex-shrink:0;border-top:1px solid var(--border)">
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+          <button onclick="assistantPrompt('What NbS work best for urban heat in Mediterranean cities?')" style="font-size:10px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--paper);color:var(--ink-2);cursor:pointer;font-family:inherit">Urban heat solutions</button>
+          <button onclick="assistantPrompt('Which EU funding instruments support Green Infrastructure projects?')" style="font-size:10px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--paper);color:var(--ink-2);cursor:pointer;font-family:inherit">Funding options</button>
+          <button onclick="assistantPrompt('What are the main barriers to NbS implementation in flood-prone areas?')" style="font-size:10px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--paper);color:var(--ink-2);cursor:pointer;font-family:inherit">Implementation barriers</button>
+          <button onclick="assistantPrompt('Show me case studies with evaluated outcomes for coastal NbS')" style="font-size:10px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--paper);color:var(--ink-2);cursor:pointer;font-family:inherit">Coastal case studies</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end">
+          <div style="flex:1;border:1.5px solid var(--border);border-radius:8px;background:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px">
+            <textarea id="assistant-input" placeholder="Ask about NbS evidence, funding, policy or case studies…" style="flex:1;border:none;outline:none;resize:none;font-family:inherit;font-size:11px;color:var(--ink);background:transparent;line-height:1.5;max-height:120px;min-height:40px" rows="1" onkeydown="assistantKeydown(event)" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+          </div>
+          <button id="assistant-send-btn" onclick="sendAssistantMessage()" style="background:var(--forest);color:#fff;border:none;border-radius:8px;padding:12px 20px;font-size:11px;cursor:pointer;font-family:var(--font-cond);font-weight:600;letter-spacing:.03em;flex-shrink:0;height:48px">Send</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+          <div style="font-size:11px;color:var(--ink-3)" id="assistant-status"></div>
+          <button onclick="clearAssistant()" style="font-size:11px;color:var(--ink-3);background:none;border:none;cursor:pointer;font-family:inherit">Clear conversation</button>
+        </div>
+        <div style="margin-top:10px;padding:8px 12px;background:var(--parchment);border-radius:6px;border:1px solid var(--border)">
+          <div style="font-size:11px;font-weight:700;color:var(--ink-3);margin-bottom:4px">API KEY</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="assistant-api-key" type="password" placeholder="Enter Anthropic API key (sk-ant-…)" style="flex:1;font-size:10px;padding:5px 8px;border:1px solid var(--border);border-radius:4px;font-family:monospace;background:#fff" oninput="sessionStorage.setItem('nbs_api_key',this.value)">
+            <span style="font-size:11px;color:var(--ink-3)">Stored in session only</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="shortlist-bar">
+    <div class="shortlist-head" onclick="toggleShortlist()">
+      <span class="shortlist-head-title">📋 My Shortlist</span>
+      <span class="shortlist-badge" id="sl-count">0</span>
+    </div>
+    <div id="shortlist-items">
+      <div style="padding:12px;font-size:10px;color:var(--ink-3);text-align:center;font-weight:300;">Add records with the + button while browsing</div>
+    </div>
+    <div class="shortlist-actions">
+      <button class="briefing-btn" onclick="generateBriefing()">Generate Briefing</button>
+      <button class="sl-clear" onclick="clearShortlist()">Clear all</button>
+    </div>
+  </div>
+  <button id="shortlist-trigger" onclick="toggleShortlist()" style="display:none">📋 Shortlist <span id="sl-trigger-count">0</span></button>
+  <div id="country-modal">
+    <div class="cm-box">
+      <div class="cm-head">
+        <div class="cm-title" id="cm-title">Country Profile</div>
+        <button class="cm-close" onclick="closeCountryModal()">&#xd7;</button>
+      </div>
+      <div class="cm-body" id="cm-body"></div>
+    </div>
   </div>
 </div>
+<div id="footer"><span class="fl">ESPON ReAdapt NbS Knowledge Repository · WENR · Climate-KIC · Funded by ESPON EGTC</span></div>
 
-<script>
-  window.NBS_APP_BOOT = {
-    totalRecords: {{ total_records|default:0 }},
-    datasets: {
-      papers: {{ dataset_counts.papers|default:0 }},
-      networkProjects: {{ dataset_counts.network_projects|default:0 }},
-      euProjects: {{ dataset_counts.eu_projects|default:0 }},
-      policies: {{ dataset_counts.policies|default:0 }}
-    }
-  };
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="/static/js/app.js"></script>
 {% endblock %}

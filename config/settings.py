@@ -142,7 +142,7 @@ OPENSEARCH = {
 }
 
 VLLM = {
-    "base_url": env("RUNPOD_VLLM_HOST", "").rstrip("/"),
+    "base_url": (env("RUNPOD_VLLM_HOST") or "").rstrip("/"),
     "chat_completions_url": env("VLLM_CHAT_COMPLETIONS_URL", "").strip(),
     "api_key": env("VLLM_API_KEY", ""),
     "model": env("VLLM_MODEL", ""),

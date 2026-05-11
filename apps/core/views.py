@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.db.models import Count
-from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.http import JsonResponse
+from django.shortcuts import redirect, render
 
 from apps.repository.models import RepositoryRecord
 
@@ -27,12 +27,11 @@ def _home_context():
 
 
 def home_view(request):
-    reference_path = settings.INITIAL_INPUT_DIR / "repository_v2_34_.html"
-    return HttpResponse(reference_path.read_text(encoding="utf-8"))
+    return render(request, "core/home_reference.html", _home_context())
 
 
 def live_home_view(request):
-    return render(request, "core/home_reference.html", _home_context())
+    return redirect("home")
 
 
 def legacy_home_view(request):
