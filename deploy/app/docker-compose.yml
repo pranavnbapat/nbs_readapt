@@ -1,15 +1,14 @@
 services:
   web:
-    image: ${APP_IMAGE:-ghcr.io/pranavnbapat/nbs_readapt:latest}
-    container_name: nbs_readapt_web_prod
+    image: ${APP_IMAGE:-ghcr.io/pranavnbapat/espon_readapt:latest}
+    container_name: espon_readapt_web_prod
     restart: unless-stopped
     env_file:
       - .env
     command: >
       sh -c "
-      python manage.py migrate &&
       python manage.py collectstatic --noinput &&
-      python manage.py runserver 0.0.0.0:8000 --insecure
+      gunicorn --bind 0.0.0.0:8000 --workers 4 config.wsgi:application
       "
     depends_on:
       postgres:
@@ -21,30 +20,30 @@ services:
       - internal
     labels:
       - traefik.enable=true
-      - traefik.docker.network=nbs_readapt_proxy
-      - traefik.http.routers.nbs-readapt-http.rule=Host(`${APP_DOMAIN:-nbs-readapt.nexavion.com}`)
-      - traefik.http.routers.nbs-readapt-http.entrypoints=web
-      - traefik.http.routers.nbs-readapt-http.middlewares=redirect-to-https@file
-      - traefik.http.routers.nbs-readapt.rule=Host(`${APP_DOMAIN:-nbs-readapt.nexavion.com}`)
-      - traefik.http.routers.nbs-readapt.entrypoints=websecure
-      - traefik.http.routers.nbs-readapt.tls.certresolver=letsencrypt
-      - traefik.http.routers.nbs-readapt.middlewares=nbs-security@file,nbs-compress@file
-      - traefik.http.services.nbs-readapt.loadbalancer.server.port=8000
+      - traefik.docker.network=espon_readapt_proxy
+      - traefik.http.routers.espon-readapt-http.rule=Host(`${APP_DOMAIN:-espon-readapt.nexavion.com}`)
+      - traefik.http.routers.espon-readapt-http.entrypoints=web
+      - traefik.http.routers.espon-readapt-http.middlewares=redirect-to-https@file
+      - traefik.http.routers.espon-readapt.rule=Host(`${APP_DOMAIN:-espon-readapt.nexavion.com}`)
+      - traefik.http.routers.espon-readapt.entrypoints=websecure
+      - traefik.http.routers.espon-readapt.tls.certresolver=letsencrypt
+      - traefik.http.routers.espon-readapt.middlewares=espon-security@file,espon-compress@file
+      - traefik.http.services.espon-readapt.loadbalancer.server.port=8000
 
   postgres:
     image: postgres:16
-    container_name: nbs_readapt_postgres_prod
+    container_name: espon_readapt_postgres_prod
     restart: unless-stopped
     env_file:
       - .env
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-nbs_readapt}
-      POSTGRES_USER: ${POSTGRES_USER:-nbs_readapt}
+      POSTGRES_DB: ${POSTGRES_DB:-espon_readapt}
+      POSTGRES_USER: ${POSTGRES_USER:-espon_readapt}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nbs_readapt} -d ${POSTGRES_DB:-nbs_readapt}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-espon_readapt} -d ${POSTGRES_DB:-espon_readapt}"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -53,7 +52,7 @@ services:
 
   opensearch:
     image: opensearchproject/opensearch:3.5.0
-    container_name: nbs_readapt_opensearch_prod
+    container_name: espon_readapt_opensearch_prod
     restart: unless-stopped
     environment:
       discovery.type: single-node
@@ -72,10 +71,10 @@ services:
 
 networks:
   proxy:
-    name: nbs_readapt_proxy
+    name: espon_readapt_proxy
     external: true
   internal:
-    name: nbs_readapt_internal
+    name: espon_readapt_internal
 
 volumes:
   postgres_data:

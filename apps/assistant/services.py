@@ -4,7 +4,7 @@ import json
 import math
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Any
+from typing import Any, Iterator
 from urllib import error, parse, request
 
 from django.conf import settings
@@ -33,6 +33,16 @@ class AssistantResult:
     reason: str
     response_style: str
     grounded: bool
+
+
+@dataclass
+class AssistantPrepared:
+    query: str
+    style: str
+    history_messages: list[dict[str, str]]
+    messages_for_model: list[dict[str, str]]
+    included_sources: list[AssistantSource]
+    out_of_scope_result: AssistantResult | None = None
 
 
 RESPONSE_STYLES: dict[str, dict[str, Any]] = {
@@ -382,7 +392,65 @@ def _call_vllm(messages: list[dict[str, str]], system_prompt: str, response_styl
     raise RuntimeError("Model API returned an unexpected message format.")
 
 
-def run_assistant(query: str, history: list[dict[str, Any]] | None = None, response_style: str | None = None) -> AssistantResult:
+def _call_vllm_stream(messages: list[dict[str, str]], system_prompt: str, response_style: str) -> Iterator[str]:
+    model = settings.VLLM.get("model") or ""
+    if not model:
+        raise RuntimeError("VLLM model is not configured.")
+
+    payload = {
+        "model": model,
+        "messages": [{"role": "system", "content": system_prompt}, *messages],
+        "temperature": 0.2,
+        "max_tokens": RESPONSE_STYLES[response_style]["max_tokens"],
+        "stream": True,
+    }
+    data = json.dumps(payload).encode("utf-8")
+    req = request.Request(
+        _chat_completion_url(),
+        data=data,
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "text/event-stream",
+            "User-Agent": "Mozilla/5.0 (compatible; NbS-ReAdapt-Assistant/1.0; +https://nbs-readapt.example.com)",
+            "Authorization": f"Bearer {settings.VLLM.get('api_key') or ''}",
+        },
+    )
+    timeout = settings.ASSISTANT["timeout_seconds"]
+    try:
+        with request.urlopen(req, timeout=timeout) as response:
+            for raw_line in response:
+                line = raw_line.decode("utf-8", errors="replace").strip()
+                if not line or not line.startswith("data:"):
+                    continue
+                data_line = line[5:].strip()
+                if not data_line or data_line == "[DONE]":
+                    break
+                try:
+                    payload = json.loads(data_line)
+                except json.JSONDecodeError:
+                    continue
+                choices = payload.get("choices") or []
+                if not choices:
+                    continue
+                delta = choices[0].get("delta") or {}
+                content = delta.get("content")
+                if isinstance(content, str) and content:
+                    yield content
+                elif isinstance(content, list):
+                    for item in content:
+                        if isinstance(item, dict) and item.get("text"):
+                            yield str(item["text"])
+                if choices[0].get("finish_reason"):
+                    break
+    except error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Model API HTTP {exc.code}: {body[:300]}") from exc
+    except error.URLError as exc:
+        raise RuntimeError(f"Model API connection failed: {exc.reason}") from exc
+
+
+def _prepare_assistant(query: str, history: list[dict[str, Any]] | None = None, response_style: str | None = None) -> AssistantPrepared:
     cleaned_query = query.strip()
     if not cleaned_query:
         raise ValueError("Query cannot be empty.")
@@ -396,13 +464,20 @@ def run_assistant(query: str, history: list[dict[str, Any]] | None = None, respo
     sources = _search_records(cleaned_query)
     relevant = _is_relevant(cleaned_query, history_messages, sources)
     if not relevant:
-        return AssistantResult(
-            reply=_out_of_scope_reply(),
-            sources=[],
-            status="ok",
-            reason="out_of_scope",
-            response_style=style,
-            grounded=False,
+        return AssistantPrepared(
+            query=cleaned_query,
+            style=style,
+            history_messages=history_messages,
+            messages_for_model=[],
+            included_sources=[],
+            out_of_scope_result=AssistantResult(
+                reply=_out_of_scope_reply(),
+                sources=[],
+                status="ok",
+                reason="out_of_scope",
+                response_style=style,
+                grounded=False,
+            ),
         )
 
     messages_for_model, included_sources = _fit_messages_to_budget(
@@ -412,17 +487,45 @@ def run_assistant(query: str, history: list[dict[str, Any]] | None = None, respo
         sources=sources,
         response_style=style,
     )
+    return AssistantPrepared(
+        query=cleaned_query,
+        style=style,
+        history_messages=history_messages,
+        messages_for_model=messages_for_model,
+        included_sources=included_sources,
+    )
+
+
+def run_assistant(query: str, history: list[dict[str, Any]] | None = None, response_style: str | None = None) -> AssistantResult:
+    prepared = _prepare_assistant(query=query, history=history, response_style=response_style)
+    if prepared.out_of_scope_result is not None:
+        return prepared.out_of_scope_result
 
     reply = _call_vllm(
-        messages=messages_for_model,
-        system_prompt=_build_system_prompt(style),
-        response_style=style,
+        messages=prepared.messages_for_model,
+        system_prompt=_build_system_prompt(prepared.style),
+        response_style=prepared.style,
     )
     return AssistantResult(
         reply=reply,
-        sources=included_sources,
+        sources=prepared.included_sources,
         status="ok",
-        reason="grounded_answer" if included_sources else "general_answer",
-        response_style=style,
-        grounded=bool(included_sources),
+        reason="grounded_answer" if prepared.included_sources else "general_answer",
+        response_style=prepared.style,
+        grounded=bool(prepared.included_sources),
+    )
+
+
+def prepare_assistant_stream(query: str, history: list[dict[str, Any]] | None = None, response_style: str | None = None) -> AssistantPrepared:
+    return _prepare_assistant(query=query, history=history, response_style=response_style)
+
+
+def run_assistant_stream(prepared: AssistantPrepared) -> Iterator[str]:
+    if prepared.out_of_scope_result is not None:
+        yield prepared.out_of_scope_result.reply
+        return
+    yield from _call_vllm_stream(
+        messages=prepared.messages_for_model,
+        system_prompt=_build_system_prompt(prepared.style),
+        response_style=prepared.style,
     )

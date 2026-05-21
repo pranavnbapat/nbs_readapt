@@ -10,4 +10,8 @@ fi
 
 python manage.py migrate --noinput
 
+if [ "${BOOTSTRAP_REPOSITORY_ON_STARTUP:-true}" = "true" ]; then
+  python manage.py bootstrap_repository_data
+fi
+
 exec "$@"

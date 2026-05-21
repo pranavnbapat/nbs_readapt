@@ -1,13 +1,13 @@
 services:
   web:
-    image: ${APP_IMAGE:-ghcr.io/pranavnbapat/nbs_readapt:latest}
+    image: ${APP_IMAGE:-ghcr.io/pranavnbapat/espon_readapt:latest}
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: nbs_readapt_web
+    container_name: espon_readapt_web
     env_file:
       - .env
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn --bind 0.0.0.0:8000 --workers 4 config.wsgi:application
     volumes:
       - .:/app
     ports:
@@ -20,7 +20,7 @@ services:
 
   postgres:
     image: postgres:16
-    container_name: nbs_readapt_postgres
+    container_name: espon_readapt_postgres
     env_file:
       - .env
     environment:
@@ -39,7 +39,7 @@ services:
 
   pgadmin:
     image: dpage/pgadmin4:9.5
-    container_name: nbs_readapt_pgadmin
+    container_name: espon_readapt_pgadmin
     env_file:
       - .env
     environment:
@@ -53,7 +53,7 @@ services:
 
   opensearch:
     image: opensearchproject/opensearch:3.5.0
-    container_name: nbs_readapt_opensearch
+    container_name: espon_readapt_opensearch
     environment:
       discovery.type: single-node
       plugins.security.disabled: "true"
