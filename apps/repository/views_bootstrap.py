@@ -49,6 +49,28 @@ HAZARD_MAP = {
     "storms&cyclones": "Storms&Cyclones",
 }
 
+# Map raw data NbS-type names to the prototype's 5 canonical labels.
+# Keys must match the frontend pill set (ANALYTICS_NBS_FILTERS / NBS_COL);
+# groupings mirror the frontend's NBS_ALIASES so the legend and pills agree.
+NBS_MAP = {
+    "green infrastructure": "Green Infrastructure",
+    "natural water retention measures": "Green Infrastructure",
+    "forest-based nbs": "Green Infrastructure",
+    "blue infrastructure": "Blue Infrastructure",
+    "blue-green infrastructure": "Blue Infrastructure",
+    "area-based conservation": "Blue Infrastructure",
+    "hybrid/engineered nbs": "Hybrid/Engineered NbS",
+    "hybrid and engineered nbs": "Hybrid/Engineered NbS",
+    "ecosystem-based adaptation": "Ecosystem-based Adaptation",
+    "nbs — general": "NbS — General",
+    "nbs general": "NbS — General",
+    "nature based solutions general": "NbS — General",
+    "nature-based solutions general": "NbS — General",
+    "ecological restoration": "NbS — General",
+    "agroecological nbs": "NbS — General",
+    "ecosystem services approach": "NbS — General",
+}
+
 TERRITORY_MAP = {
     "urban": "Urban",
     "rural": "Rural",
@@ -98,6 +120,7 @@ def _shape_record(src: dict[str, Any]) -> dict[str, Any]:
     rec_id = record_id if record_id.startswith(prefix) else f"{prefix}_{record_id}"
 
     raw_hz = hazards[0] if hazards else ""
+    raw_nb = nbs_types[0] if nbs_types else ""
     raw_te = src.get("territorial_context") or ""
     # Scale can live in policy_level or geographic_scope; prefer whichever has a mappable value.
     raw_sc = src.get("policy_level") or src.get("geographic_scope") or ""
@@ -117,7 +140,7 @@ def _shape_record(src: dict[str, Any]) -> dict[str, Any]:
         "so": src.get("source_database") or "",
         "yr": str(year) if year else "",
         "co": country,
-        "nb": nbs_types[0] if nbs_types else "",
+        "nb": NBS_MAP.get(raw_nb.strip().lower(), raw_nb),
         "hz": HAZARD_MAP.get(raw_hz.strip().lower(), raw_hz),
         "te": _normalize(raw_te, TERRITORY_MAP),
         "sc": sc_value,

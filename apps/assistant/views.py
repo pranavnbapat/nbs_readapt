@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from functools import wraps
 
 from django.conf import settings
 from django.http import HttpRequest, JsonResponse, StreamingHttpResponse
@@ -9,15 +10,126 @@ from django.views.decorators.http import require_GET, require_POST
 
 from .services import RESPONSE_STYLES, prepare_assistant_stream, run_assistant, run_assistant_stream
 
+ASSISTANT_SESSION_KEY = "assistant_session_active"
+ASSISTANT_SESSION_USER_KEY = "assistant_session_user"
+
+
+def _assistant_auth_configured() -> bool:
+    config = settings.ASSISTANT_AUTH
+    return bool(config.get("username") and config.get("password"))
+
+
+def _touch_assistant_session(request: HttpRequest) -> None:
+    request.session.set_expiry(settings.ASSISTANT_AUTH["session_timeout_seconds"])
+    request.session.modified = True
+
+
+def _assistant_session_active(request: HttpRequest, *, touch: bool = False) -> bool:
+    active = bool(request.session.get(ASSISTANT_SESSION_KEY))
+    if active and touch:
+        _touch_assistant_session(request)
+    return active
+
+
+def _assistant_auth_payload(request: HttpRequest) -> dict[str, object]:
+    active = _assistant_session_active(request)
+    return {
+        "status": "ok",
+        "authenticated": active,
+        "configured": _assistant_auth_configured(),
+        "username": request.session.get(ASSISTANT_SESSION_USER_KEY, "") if active else "",
+        "timeout_seconds": settings.ASSISTANT_AUTH["session_timeout_seconds"],
+    }
+
+
+def assistant_session_required(view_func):
+    @wraps(view_func)
+    def _wrapped(request: HttpRequest, *args, **kwargs):
+        if not _assistant_session_active(request, touch=True):
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "error": "Assistant login required.",
+                    "code": "assistant_auth_required",
+                },
+                status=401,
+            )
+        return view_func(request, *args, **kwargs)
+
+    return _wrapped
+
+
+@csrf_exempt
+@require_POST
+def assistant_login_view(request: HttpRequest) -> JsonResponse:
+    if not _assistant_auth_configured():
+        return JsonResponse(
+            {
+                "status": "error",
+                "error": "Assistant login is not configured.",
+                "code": "assistant_auth_not_configured",
+            },
+            status=503,
+        )
+
+    try:
+        payload = json.loads(request.body.decode("utf-8"))
+    except json.JSONDecodeError:
+        return JsonResponse({"status": "error", "error": "Invalid JSON body."}, status=400)
+
+    username = str(payload.get("username") or "").strip()
+    password = str(payload.get("password") or "")
+    if username != settings.ASSISTANT_AUTH["username"] or password != settings.ASSISTANT_AUTH["password"]:
+        return JsonResponse(
+            {
+                "status": "error",
+                "error": "Invalid assistant username or password.",
+                "code": "assistant_auth_invalid",
+            },
+            status=403,
+        )
+
+    request.session.cycle_key()
+    request.session[ASSISTANT_SESSION_KEY] = True
+    request.session[ASSISTANT_SESSION_USER_KEY] = username
+    _touch_assistant_session(request)
+    return JsonResponse(_assistant_auth_payload(request))
+
+
+@csrf_exempt
+@require_POST
+def assistant_logout_view(request: HttpRequest) -> JsonResponse:
+    request.session.pop(ASSISTANT_SESSION_KEY, None)
+    request.session.pop(ASSISTANT_SESSION_USER_KEY, None)
+    request.session.modified = True
+    return JsonResponse(_assistant_auth_payload(request))
+
 
 @require_GET
+def assistant_session_view(request: HttpRequest) -> JsonResponse:
+    touch = request.GET.get("touch") == "1"
+    if _assistant_session_active(request, touch=touch):
+        return JsonResponse(_assistant_auth_payload(request))
+    return JsonResponse(_assistant_auth_payload(request), status=401)
+
+
+@require_GET
+@assistant_session_required
 def assistant_status_view(request: HttpRequest) -> JsonResponse:
+    provider = settings.ASSISTANT.get("provider") or "vllm"
+    provider_config = settings.VLLM if provider == "vllm" else settings.ANTHROPIC
+    configured = bool(provider_config.get("model") and provider_config.get("api_key"))
+    if provider == "vllm":
+        configured = configured and bool(provider_config.get("base_url") or provider_config.get("chat_completions_url"))
+    else:
+        configured = configured and bool(provider_config.get("base_url"))
+
     return JsonResponse(
         {
             "status": "ok",
-            "provider": "vllm",
-            "configured": bool(settings.VLLM.get("base_url") and settings.VLLM.get("model") and settings.VLLM.get("api_key")),
-            "model": settings.VLLM.get("model") or "",
+            "provider": provider,
+            "configured": configured,
+            "model": provider_config.get("model") or "",
             "response_styles": list(RESPONSE_STYLES.keys()),
             "default_response_style": settings.ASSISTANT["response_style_default"],
         }
@@ -26,6 +138,7 @@ def assistant_status_view(request: HttpRequest) -> JsonResponse:
 
 @csrf_exempt
 @require_POST
+@assistant_session_required
 def assistant_chat_view(request: HttpRequest) -> JsonResponse:
     try:
         payload = json.loads(request.body.decode("utf-8"))
@@ -72,6 +185,7 @@ def assistant_chat_view(request: HttpRequest) -> JsonResponse:
 
 @csrf_exempt
 @require_POST
+@assistant_session_required
 def assistant_chat_stream_view(request: HttpRequest) -> StreamingHttpResponse | JsonResponse:
     try:
         payload = json.loads(request.body.decode("utf-8"))

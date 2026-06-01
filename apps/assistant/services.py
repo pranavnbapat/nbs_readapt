@@ -240,8 +240,19 @@ def _estimate_tokens(*parts: str) -> int:
     return math.ceil(len(text) / chars_per_token)
 
 
+def _provider_name() -> str:
+    provider = (settings.ASSISTANT.get("provider") or "vllm").strip().lower()
+    if provider not in {"vllm", "anthropic"}:
+        raise RuntimeError(f"Unsupported assistant provider: {provider}")
+    return provider
+
+
+def _provider_config() -> dict[str, Any]:
+    return settings.VLLM if _provider_name() == "vllm" else settings.ANTHROPIC
+
+
 def _input_token_budget(response_style: str) -> int:
-    model_len = max(int(settings.VLLM.get("max_model_len") or 0), 4096)
+    model_len = max(int(_provider_config().get("max_model_len") or 0), 4096)
     output_tokens = RESPONSE_STYLES[response_style]["max_tokens"]
     configured = settings.ASSISTANT["max_input_tokens"]
     derived_margin = max(output_tokens * 2, 1024)
@@ -334,7 +345,7 @@ def _out_of_scope_reply() -> str:
     )
 
 
-def _chat_completion_url() -> str:
+def _vllm_chat_completion_url() -> str:
     explicit = settings.VLLM.get("chat_completions_url") or ""
     if explicit:
         return explicit
@@ -342,6 +353,26 @@ def _chat_completion_url() -> str:
     if not base_url:
         raise RuntimeError("VLLM base URL is not configured.")
     return parse.urljoin(f"{base_url}/", "v1/chat/completions")
+
+
+def _anthropic_messages_url() -> str:
+    base_url = settings.ANTHROPIC.get("base_url") or ""
+    if not base_url:
+        raise RuntimeError("Anthropic base URL is not configured.")
+    return parse.urljoin(f"{base_url}/", "v1/messages")
+
+
+def _read_json_response(req: request.Request) -> dict[str, Any]:
+    timeout = settings.ASSISTANT["timeout_seconds"]
+    try:
+        with request.urlopen(req, timeout=timeout) as response:
+            raw = response.read().decode("utf-8")
+    except error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Model API HTTP {exc.code}: {body[:300]}") from exc
+    except error.URLError as exc:
+        raise RuntimeError(f"Model API connection failed: {exc.reason}") from exc
+    return json.loads(raw)
 
 
 def _call_vllm(messages: list[dict[str, str]], system_prompt: str, response_style: str) -> str:
@@ -356,10 +387,9 @@ def _call_vllm(messages: list[dict[str, str]], system_prompt: str, response_styl
         "max_tokens": RESPONSE_STYLES[response_style]["max_tokens"],
         "stream": False,
     }
-    data = json.dumps(payload).encode("utf-8")
     req = request.Request(
-        _chat_completion_url(),
-        data=data,
+        _vllm_chat_completion_url(),
+        data=json.dumps(payload).encode("utf-8"),
         method="POST",
         headers={
             "Content-Type": "application/json",
@@ -368,17 +398,7 @@ def _call_vllm(messages: list[dict[str, str]], system_prompt: str, response_styl
             "Authorization": f"Bearer {settings.VLLM.get('api_key') or ''}",
         },
     )
-    timeout = settings.ASSISTANT["timeout_seconds"]
-    try:
-        with request.urlopen(req, timeout=timeout) as response:
-            raw = response.read().decode("utf-8")
-    except error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"Model API HTTP {exc.code}: {body[:300]}") from exc
-    except error.URLError as exc:
-        raise RuntimeError(f"Model API connection failed: {exc.reason}") from exc
-
-    payload = json.loads(raw)
+    payload = _read_json_response(req)
     choices = payload.get("choices") or []
     if not choices:
         raise RuntimeError("Model API returned no choices.")
@@ -404,10 +424,9 @@ def _call_vllm_stream(messages: list[dict[str, str]], system_prompt: str, respon
         "max_tokens": RESPONSE_STYLES[response_style]["max_tokens"],
         "stream": True,
     }
-    data = json.dumps(payload).encode("utf-8")
     req = request.Request(
-        _chat_completion_url(),
-        data=data,
+        _vllm_chat_completion_url(),
+        data=json.dumps(payload).encode("utf-8"),
         method="POST",
         headers={
             "Content-Type": "application/json",
@@ -449,6 +468,112 @@ def _call_vllm_stream(messages: list[dict[str, str]], system_prompt: str, respon
     except error.URLError as exc:
         raise RuntimeError(f"Model API connection failed: {exc.reason}") from exc
 
+
+def _call_anthropic(messages: list[dict[str, str]], system_prompt: str, response_style: str) -> str:
+    model = settings.ANTHROPIC.get("model") or ""
+    api_key = settings.ANTHROPIC.get("api_key") or ""
+    if not model:
+        raise RuntimeError("Anthropic model is not configured.")
+    if not api_key:
+        raise RuntimeError("Anthropic API key is not configured.")
+
+    payload = {
+        "model": model,
+        "system": system_prompt,
+        "messages": messages,
+        "temperature": 0.2,
+        "max_tokens": RESPONSE_STYLES[response_style]["max_tokens"],
+    }
+    req = request.Request(
+        _anthropic_messages_url(),
+        data=json.dumps(payload).encode("utf-8"),
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0 (compatible; NbS-ReAdapt-Assistant/1.0; +https://nbs-readapt.example.com)",
+            "x-api-key": api_key,
+            "anthropic-version": settings.ANTHROPIC.get("version") or "2023-06-01",
+        },
+    )
+    payload = _read_json_response(req)
+    content = payload.get("content") or []
+    text_parts = [item.get("text", "") for item in content if isinstance(item, dict) and item.get("type") == "text"]
+    reply = "\n".join(part for part in text_parts if part).strip()
+    if reply:
+        return reply
+    raise RuntimeError("Anthropic API returned no text content.")
+
+
+def _call_anthropic_stream(messages: list[dict[str, str]], system_prompt: str, response_style: str) -> Iterator[str]:
+    model = settings.ANTHROPIC.get("model") or ""
+    api_key = settings.ANTHROPIC.get("api_key") or ""
+    if not model:
+        raise RuntimeError("Anthropic model is not configured.")
+    if not api_key:
+        raise RuntimeError("Anthropic API key is not configured.")
+
+    payload = {
+        "model": model,
+        "system": system_prompt,
+        "messages": messages,
+        "temperature": 0.2,
+        "max_tokens": RESPONSE_STYLES[response_style]["max_tokens"],
+        "stream": True,
+    }
+    req = request.Request(
+        _anthropic_messages_url(),
+        data=json.dumps(payload).encode("utf-8"),
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "text/event-stream",
+            "User-Agent": "Mozilla/5.0 (compatible; NbS-ReAdapt-Assistant/1.0; +https://nbs-readapt.example.com)",
+            "x-api-key": api_key,
+            "anthropic-version": settings.ANTHROPIC.get("version") or "2023-06-01",
+        },
+    )
+    timeout = settings.ASSISTANT["timeout_seconds"]
+    try:
+        with request.urlopen(req, timeout=timeout) as response:
+            for raw_line in response:
+                line = raw_line.decode("utf-8", errors="replace").strip()
+                if not line or not line.startswith("data:"):
+                    continue
+                data_line = line[5:].strip()
+                if not data_line:
+                    continue
+                try:
+                    payload = json.loads(data_line)
+                except json.JSONDecodeError:
+                    continue
+                event_type = payload.get("type") or ""
+                if event_type == "content_block_delta":
+                    delta = payload.get("delta") or {}
+                    if delta.get("type") == "text_delta" and delta.get("text"):
+                        yield str(delta["text"])
+                elif event_type == "message_stop":
+                    break
+    except error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"Model API HTTP {exc.code}: {body[:300]}") from exc
+    except error.URLError as exc:
+        raise RuntimeError(f"Model API connection failed: {exc.reason}") from exc
+
+
+def _call_model(messages: list[dict[str, str]], system_prompt: str, response_style: str) -> str:
+    provider = _provider_name()
+    if provider == "anthropic":
+        return _call_anthropic(messages=messages, system_prompt=system_prompt, response_style=response_style)
+    return _call_vllm(messages=messages, system_prompt=system_prompt, response_style=response_style)
+
+
+def _call_model_stream(messages: list[dict[str, str]], system_prompt: str, response_style: str) -> Iterator[str]:
+    provider = _provider_name()
+    if provider == "anthropic":
+        yield from _call_anthropic_stream(messages=messages, system_prompt=system_prompt, response_style=response_style)
+        return
+    yield from _call_vllm_stream(messages=messages, system_prompt=system_prompt, response_style=response_style)
 
 def _prepare_assistant(query: str, history: list[dict[str, Any]] | None = None, response_style: str | None = None) -> AssistantPrepared:
     cleaned_query = query.strip()
@@ -501,7 +626,7 @@ def run_assistant(query: str, history: list[dict[str, Any]] | None = None, respo
     if prepared.out_of_scope_result is not None:
         return prepared.out_of_scope_result
 
-    reply = _call_vllm(
+    reply = _call_model(
         messages=prepared.messages_for_model,
         system_prompt=_build_system_prompt(prepared.style),
         response_style=prepared.style,
@@ -524,7 +649,7 @@ def run_assistant_stream(prepared: AssistantPrepared) -> Iterator[str]:
     if prepared.out_of_scope_result is not None:
         yield prepared.out_of_scope_result.reply
         return
-    yield from _call_vllm_stream(
+    yield from _call_model_stream(
         messages=prepared.messages_for_model,
         system_prompt=_build_system_prompt(prepared.style),
         response_style=prepared.style,

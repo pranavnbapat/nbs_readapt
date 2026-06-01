@@ -66,9 +66,15 @@ OPENSEARCH_INITIAL_ADMIN_PASSWORD=<strong-os-admin-password>
 OPENSEARCH_INDEX_BM25=nbs_repository_bm25
 
 # AI (if using assistant)
+ASSISTANT_PROVIDER=vllm
 RUNPOD_VLLM_HOST=https://your-runpod-endpoint.runpod.net
 VLLM_API_KEY=<your-api-key>
 VLLM_MODEL=meta-llama/Meta-Llama-3-8B-Instruct
+
+# Or use Anthropic instead of VLLM
+# ASSISTANT_PROVIDER=anthropic
+# ANTHROPIC_API_KEY=<your-api-key>
+# ANTHROPIC_MODEL=claude-3-5-haiku-latest
 
 # Deployment
 APP_DOMAIN=nbs-readapt.example.com

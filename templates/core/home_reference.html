@@ -112,8 +112,12 @@
           </div>
         </div>
       </div>
-      <div style="border-top:1px solid var(--border);padding-top:14px">
-        <p style="font-size:12px;color:var(--ink-3);margin:0">Developed by: Lead Partner <strong style="color:var(--ink-2)">WENR</strong> &nbsp;·&nbsp; Partner <strong style="color:var(--ink-2)">Climate-KIC</strong> &nbsp;·&nbsp; Funded by <strong style="color:var(--ink-2)">ESPON EGTC</strong></p>
+      <div style="border-top:1px solid var(--border);padding-top:18px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:nowrap;gap:32px">
+          <img src="/static/images/Wageningen_University_and_Research_Logo.png" alt="Wageningen University & Research (WENR)" style="max-height:44px;max-width:32%;height:auto;width:auto;object-fit:contain">
+          <img src="/static/images/CK_Horizontal_Logo_Ink_RGB.png" alt="Climate-KIC" style="max-height:30px;max-width:22%;height:auto;width:auto;object-fit:contain">
+          <img src="/static/images/ESPON%202030%20Logo.png" alt="ESPON EGTC" style="max-height:44px;max-width:40%;height:auto;width:auto;object-fit:contain">
+        </div>
       </div>
     </div>
   </div>
@@ -243,9 +247,9 @@
           <div class="ana-card-title">🏙️ Territory Type</div>
           <div id="ter-bars"></div>
         </div>
-        <div class="ana-card">
+        <div class="ana-card" style="display:flex;flex-direction:column">
           <div class="ana-card-title">📅 Publications &amp; Projects by Year</div>
-          <div id="year-chart" style="height:80px"></div>
+          <div id="year-chart" style="flex:1;min-height:120px"></div>
         </div>
       </div>
       <div class="ana-card" style="margin-bottom:12px">
@@ -374,33 +378,51 @@
         <div style="font-family:var(--font-display);font-size:16px;font-weight:500;color:var(--forest);margin-bottom:4px">🌿 NbS Assistant</div>
         <div style="font-size:12px;color:var(--ink-3);line-height:1.6">Ask questions about Nature-based Solutions evidence, funding, policy or comparable cases from the repository. The assistant draws on 1,557 curated records across Europe.</div>
       </div>
-      <div id="assistant-messages" style="flex:1;overflow-y:auto;padding:20px 0;display:flex;flex-direction:column;gap:14px">
-        <div class="chat-msg assistant">
-          <div class="chat-msg-avatar">🌿</div>
-          <div class="chat-msg-body"><div class="chat-msg-text">Hello! I can help you find NbS evidence, explore funding options, understand policy alignment or identify comparable cases from across Europe. What would you like to know?</div></div>
+      <div id="assistant-auth-panel" style="display:none;flex:1;align-items:center;justify-content:center;padding:30px 0;">
+        <div style="width:100%;max-width:420px;background:var(--paper);border:1px solid var(--border);border-radius:10px;padding:24px;box-shadow:var(--shadow-sm);">
+          <div style="font-family:var(--font-display);font-size:15px;font-weight:500;color:var(--forest);margin-bottom:6px">Assistant Login</div>
+          <div style="font-size:12px;color:var(--ink-3);line-height:1.6;margin-bottom:16px">This chatbot requires a separate static assistant login and locks automatically after 20 minutes of inactivity.</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <input id="assistant-login-username" type="text" placeholder="Username" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:11px 12px;font-size:12px;font-family:inherit;background:#fff;color:var(--ink);outline:none;" />
+            <input id="assistant-login-password" type="password" placeholder="Password" style="width:100%;border:1px solid var(--border);border-radius:8px;padding:11px 12px;font-size:12px;font-family:inherit;background:#fff;color:var(--ink);outline:none;" />
+            <button id="assistant-login-btn" onclick="assistantLogin()" style="background:var(--forest);color:#fff;border:none;border-radius:8px;padding:12px 16px;font-size:11px;cursor:pointer;font-family:var(--font-cond);font-weight:600;letter-spacing:.04em;">Unlock Assistant</button>
+          </div>
+          <div id="assistant-auth-status" style="margin-top:12px;font-size:11px;color:var(--ink-3);line-height:1.6"></div>
         </div>
       </div>
-      <div style="padding:14px 0 20px;flex-shrink:0;border-top:1px solid var(--border)">
-        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-          <button onclick="assistantPrompt('What NbS work best for urban heat in Mediterranean cities?')" style="font-size:10px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--paper);color:var(--ink-2);cursor:pointer;font-family:inherit">Urban heat solutions</button>
-          <button onclick="assistantPrompt('Which EU funding instruments support Green Infrastructure projects?')" style="font-size:10px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--paper);color:var(--ink-2);cursor:pointer;font-family:inherit">Funding options</button>
-          <button onclick="assistantPrompt('What are the main barriers to NbS implementation in flood-prone areas?')" style="font-size:10px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--paper);color:var(--ink-2);cursor:pointer;font-family:inherit">Implementation barriers</button>
-          <button onclick="assistantPrompt('Show me case studies with evaluated outcomes for coastal NbS')" style="font-size:10px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--paper);color:var(--ink-2);cursor:pointer;font-family:inherit">Coastal case studies</button>
-        </div>
-        <div style="display:flex;gap:8px;align-items:flex-end">
-          <div style="flex:1;border:1.5px solid var(--border);border-radius:8px;background:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px">
-            <textarea id="assistant-input" placeholder="Ask about NbS evidence, funding, policy or case studies…" style="flex:1;border:none;outline:none;resize:none;font-family:inherit;font-size:11px;color:var(--ink);background:transparent;line-height:1.5;max-height:120px;min-height:40px" rows="1" onkeydown="assistantKeydown(event)" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+      <div id="assistant-app" style="display:none;flex:1;flex-direction:column;min-height:0;">
+        <div id="assistant-messages" style="flex:1;overflow-y:auto;padding:20px 0;display:flex;flex-direction:column;gap:14px">
+          <div class="chat-msg assistant">
+            <div class="chat-msg-avatar">🌿</div>
+            <div class="chat-msg-body"><div class="chat-msg-text">Hello! I can help you find NbS evidence, explore funding options, understand policy alignment or identify comparable cases from across Europe. What would you like to know?</div></div>
           </div>
-          <button id="assistant-send-btn" onclick="sendAssistantMessage()" style="background:var(--forest);color:#fff;border:none;border-radius:8px;padding:12px 20px;font-size:11px;cursor:pointer;font-family:var(--font-cond);font-weight:600;letter-spacing:.03em;flex-shrink:0;height:48px">Send</button>
         </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
-          <div style="font-size:11px;color:var(--ink-3)" id="assistant-status"></div>
-          <button onclick="clearAssistant()" style="font-size:11px;color:var(--ink-3);background:none;border:none;cursor:pointer;font-family:inherit">Clear conversation</button>
-        </div>
-        <div style="margin-top:10px;padding:8px 12px;background:var(--parchment);border-radius:6px;border:1px solid var(--border)">
-          <div style="font-size:11px;font-weight:700;color:var(--ink-3);margin-bottom:4px">Assistant Access</div>
-          <div style="font-size:11px;color:var(--ink-3);line-height:1.6">
-            Responses are now generated through the server-side Django assistant endpoint using the deployment's configured model provider.
+        <div style="padding:14px 0 20px;flex-shrink:0;border-top:1px solid var(--border)">
+          <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+            <button onclick="assistantPrompt('What NbS work best for urban heat in Mediterranean cities?')" style="font-size:10px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--paper);color:var(--ink-2);cursor:pointer;font-family:inherit">Urban heat solutions</button>
+            <button onclick="assistantPrompt('Which EU funding instruments support Green Infrastructure projects?')" style="font-size:10px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--paper);color:var(--ink-2);cursor:pointer;font-family:inherit">Funding options</button>
+            <button onclick="assistantPrompt('What are the main barriers to NbS implementation in flood-prone areas?')" style="font-size:10px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--paper);color:var(--ink-2);cursor:pointer;font-family:inherit">Implementation barriers</button>
+            <button onclick="assistantPrompt('Show me case studies with evaluated outcomes for coastal NbS')" style="font-size:10px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--paper);color:var(--ink-2);cursor:pointer;font-family:inherit">Coastal case studies</button>
+          </div>
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <div style="flex:1;border:1.5px solid var(--border);border-radius:8px;background:#fff;padding:10px 14px;display:flex;align-items:center;gap:8px">
+              <textarea id="assistant-input" placeholder="Ask about NbS evidence, funding, policy or case studies…" style="flex:1;border:none;outline:none;resize:none;font-family:inherit;font-size:11px;color:var(--ink);background:transparent;line-height:1.5;max-height:120px;min-height:40px" rows="1" onkeydown="assistantKeydown(event)" oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'"></textarea>
+            </div>
+            <button id="assistant-send-btn" onclick="sendAssistantMessage()" style="background:var(--forest);color:#fff;border:none;border-radius:8px;padding:12px 20px;font-size:11px;cursor:pointer;font-family:var(--font-cond);font-weight:600;letter-spacing:.03em;flex-shrink:0;height:48px">Send</button>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;gap:12px;flex-wrap:wrap;">
+            <div style="font-size:11px;color:var(--ink-3)" id="assistant-status"></div>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <div id="assistant-session-indicator" style="font-size:11px;color:var(--ink-3)"></div>
+              <button onclick="clearAssistant()" style="font-size:11px;color:var(--ink-3);background:none;border:none;cursor:pointer;font-family:inherit">Clear conversation</button>
+              <button onclick="assistantLogout()" style="font-size:11px;color:var(--ink-3);background:none;border:none;cursor:pointer;font-family:inherit">Lock assistant</button>
+            </div>
+          </div>
+          <div style="margin-top:10px;padding:8px 12px;background:var(--parchment);border-radius:6px;border:1px solid var(--border)">
+            <div style="font-size:11px;font-weight:700;color:var(--ink-3);margin-bottom:4px">Assistant Access</div>
+            <div style="font-size:11px;color:var(--ink-3);line-height:1.6">
+              Responses are generated through the server-side Django assistant endpoint using the deployment's configured model provider. Access is gated by a separate assistant session.
+            </div>
           </div>
         </div>
       </div>
@@ -434,4 +456,191 @@
 <div id="footer"><span class="fl">ESPON ReAdapt NbS Knowledge Repository · WENR · Climate-KIC · Funded by ESPON EGTC</span></div>
 
 <script src="/static/js/app.js"></script>
+<script>
+(function(){
+  const SESSION_POLL_MS = 60000;
+  const TOUCH_THROTTLE_MS = 60000;
+  let assistantAuthenticated = false;
+  let assistantSessionPoll = null;
+  let lastAssistantTouch = 0;
+  const originalShowTab = window.showTab;
+  const originalSendAssistantMessage = window.sendAssistantMessage;
+  const originalAssistantPrompt = window.assistantPrompt;
+  const originalAssistantKeydown = window.assistantKeydown;
+  const originalClearAssistant = window.clearAssistant;
+
+  function assistantEls(){
+    return {
+      authPanel: document.getElementById('assistant-auth-panel'),
+      app: document.getElementById('assistant-app'),
+      authStatus: document.getElementById('assistant-auth-status'),
+      sessionIndicator: document.getElementById('assistant-session-indicator'),
+      username: document.getElementById('assistant-login-username'),
+      password: document.getElementById('assistant-login-password'),
+      loginBtn: document.getElementById('assistant-login-btn'),
+      input: document.getElementById('assistant-input'),
+    };
+  }
+
+  function assistantAuthHeaders(){
+    return {'Content-Type':'application/json','Accept':'application/json'};
+  }
+
+  function setAssistantAccess(allowed, message){
+    assistantAuthenticated = !!allowed;
+    const els = assistantEls();
+    if(els.authPanel) els.authPanel.style.display = allowed ? 'none' : 'flex';
+    if(els.app) els.app.style.display = allowed ? 'flex' : 'none';
+    if(els.authStatus) els.authStatus.textContent = message || (allowed ? '' : 'Assistant login required.');
+    if(els.sessionIndicator) els.sessionIndicator.textContent = allowed ? 'Session active' : 'Locked';
+    if(!allowed && typeof originalClearAssistant === 'function') originalClearAssistant();
+  }
+
+  async function fetchAssistantSession(touch){
+    const url = touch ? '/assistant/session/?touch=1' : '/assistant/session/';
+    const response = await fetch(url, {headers:{'Accept':'application/json'}});
+    const data = await response.json().catch(()=>({authenticated:false,error:'Unable to verify assistant session.'}));
+    return {ok: response.ok, data};
+  }
+
+  async function syncAssistantSession(opts){
+    const options = opts || {};
+    try{
+      const result = await fetchAssistantSession(!!options.touch);
+      const message = options.message || (result.ok ? '' : (result.data.error || 'Assistant login required.'));
+      setAssistantAccess(result.ok && result.data && result.data.authenticated, message);
+      return result.ok && result.data && result.data.authenticated;
+    }catch(err){
+      if(!options.silent){
+        setAssistantAccess(false, 'Unable to verify assistant session.');
+      }
+      return false;
+    }
+  }
+
+  async function noteAssistantActivity(){
+    if(!assistantAuthenticated) return;
+    const now = Date.now();
+    if(now - lastAssistantTouch < TOUCH_THROTTLE_MS) return;
+    lastAssistantTouch = now;
+    await syncAssistantSession({touch:true,silent:true});
+  }
+
+  function startAssistantSessionPolling(){
+    if(assistantSessionPoll) return;
+    assistantSessionPoll = window.setInterval(async ()=>{
+      const assistantTab = document.getElementById('tab-assistant');
+      if(!assistantTab || !assistantTab.classList.contains('active')) return;
+      const active = await syncAssistantSession({silent:true});
+      if(!active){
+        setAssistantAccess(false, 'Assistant session expired after 20 minutes of inactivity.');
+      }
+    }, SESSION_POLL_MS);
+  }
+
+  async function ensureAssistantAccess(){
+    const active = await syncAssistantSession({silent:true});
+    if(!active){
+      setAssistantAccess(false, 'Assistant login required.');
+      const els = assistantEls();
+      if(els.username) els.username.focus();
+    }
+    return active;
+  }
+
+  window.assistantLogin = async function assistantLogin(){
+    const els = assistantEls();
+    const username = (els.username && els.username.value || '').trim();
+    const password = els.password && els.password.value || '';
+    if(!username || !password){
+      setAssistantAccess(false, 'Enter the assistant username and password.');
+      return;
+    }
+    if(els.loginBtn) els.loginBtn.disabled = true;
+    try{
+      const response = await fetch('/assistant/login/', {method:'POST', headers: assistantAuthHeaders(), body: JSON.stringify({username, password})});
+      const data = await response.json().catch(()=>({error:`HTTP ${response.status}`}));
+      if(!response.ok){
+        setAssistantAccess(false, data.error || 'Assistant login failed.');
+        return;
+      }
+      if(els.password) els.password.value = '';
+      await syncAssistantSession({touch:true,message:'Assistant unlocked.'});
+      if(els.input) els.input.focus();
+    }catch(err){
+      setAssistantAccess(false, 'Assistant login failed.');
+    }finally{
+      if(els.loginBtn) els.loginBtn.disabled = false;
+    }
+  };
+
+  window.assistantLogout = async function assistantLogout(){
+    try{
+      await fetch('/assistant/logout/', {method:'POST', headers: assistantAuthHeaders()});
+    }catch(err){}
+    setAssistantAccess(false, 'Assistant locked.');
+  };
+
+  window.showTab = function(id){
+    originalShowTab(id);
+    if(id === 'assistant'){
+      ensureAssistantAccess();
+      startAssistantSessionPolling();
+    }
+  };
+
+  window.assistantKeydown = function assistantKeydown(event){
+    noteAssistantActivity();
+    return originalAssistantKeydown(event);
+  };
+
+  window.assistantPrompt = function assistantPrompt(text){
+    noteAssistantActivity();
+    return originalAssistantPrompt(text);
+  };
+
+  window.clearAssistant = function clearAssistant(){
+    return originalClearAssistant();
+  };
+
+  window.sendAssistantMessage = async function sendAssistantMessage(){
+    const active = await ensureAssistantAccess();
+    if(!active) return;
+    await noteAssistantActivity();
+    try{
+      return await originalSendAssistantMessage();
+    }catch(err){
+      throw err;
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    startAssistantSessionPolling();
+    const els = assistantEls();
+    if(els.password){
+      els.password.addEventListener('keydown', (event)=>{
+        if(event.key === 'Enter'){
+          event.preventDefault();
+          window.assistantLogin();
+        }
+      });
+    }
+    if(els.username){
+      els.username.addEventListener('keydown', (event)=>{
+        if(event.key === 'Enter'){
+          event.preventDefault();
+          window.assistantLogin();
+        }
+      });
+    }
+    const app = els.app;
+    ['click','keydown','input','focusin'].forEach((eventName)=>{
+      if(app){
+        app.addEventListener(eventName, ()=>{ noteAssistantActivity(); });
+      }
+    });
+    syncAssistantSession({silent:true});
+  });
+})();
+</script>
 {% endblock %}

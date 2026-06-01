@@ -155,7 +155,16 @@ VLLM = {
     "max_model_len": int(env("VLLM_MAX_MODEL_LEN", "65535")),
 }
 
+ANTHROPIC = {
+    "base_url": (env("ANTHROPIC_BASE_URL", "https://api.anthropic.com") or "").rstrip("/"),
+    "api_key": env("ANTHROPIC_API_KEY", "").strip(),
+    "model": env("ANTHROPIC_MODEL", "").strip(),
+    "version": env("ANTHROPIC_VERSION", "2023-06-01").strip(),
+    "max_model_len": int(env("ANTHROPIC_MAX_MODEL_LEN", "200000")),
+}
+
 ASSISTANT = {
+    "provider": env("ASSISTANT_PROVIDER", "vllm").strip().lower(),
     "timeout_seconds": int(env("ASSISTANT_TIMEOUT_SECONDS", "120")),
     "max_history_messages": int(env("ASSISTANT_MAX_HISTORY_MESSAGES", "6")),
     "context_records": int(env("ASSISTANT_CONTEXT_RECORDS", "6")),
@@ -167,6 +176,12 @@ ASSISTANT = {
     "token_safety_margin": int(env("ASSISTANT_TOKEN_SAFETY_MARGIN", "0")),
     "response_style_default": env("ASSISTANT_RESPONSE_STYLE_DEFAULT", "standard"),
     "relevance_min_score": float(env("ASSISTANT_RELEVANCE_MIN_SCORE", "5.0")),
+}
+
+ASSISTANT_AUTH = {
+    "username": env("ASSISTANT_LOGIN_USERNAME", "").strip(),
+    "password": env("ASSISTANT_LOGIN_PASSWORD", "").strip(),
+    "session_timeout_seconds": int(env("ASSISTANT_SESSION_TIMEOUT_SECONDS", "1200")),
 }
 
 INITIAL_INPUT_DIR = BASE_DIR / env("INITIAL_INPUT_DIR", "initial_input")

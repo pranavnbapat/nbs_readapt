@@ -28,7 +28,7 @@ The v1 API is **publicly accessible** without authentication. No API keys or tok
 
 ### Assistant API
 
-The `/assistant/chat/` endpoint requires the backend VLLM configuration to be set via environment variables. The client may optionally provide an API key in the request body for certain provider setups.
+The `/assistant/chat/` endpoint requires the backend assistant provider to be configured via environment variables. The deployment can use either `vllm` or `anthropic` server-side.
 
 ### Future
 
@@ -515,7 +515,7 @@ Returns assistant configuration and availability.
 |-------|------|-------------|
 | `status` | string | `"ok"` or error state |
 | `provider` | string | LLM provider identifier |
-| `configured` | boolean | Whether VLLM is fully configured |
+| `configured` | boolean | Whether the selected assistant provider is fully configured |
 | `model` | string | Model identifier |
 | `response_styles` | string[] | Available response styles |
 | `default_response_style` | string | Default style |
